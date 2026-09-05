@@ -21,7 +21,7 @@ from . import _pro
 from .client import LensScraper
 from .config import LensConfig
 from .exceptions import LensError, LensRateLimitError
-from .models import EnrichedCommerceMatch
+from .models import EnrichedCommerceMatch, StockStatus
 from .parser import PROG_NAME
 from .session import SessionManager
 
@@ -53,19 +53,33 @@ def _build_commerce_table(title: str, items: list[EnrichedCommerceMatch]) -> Tab
     table.add_column("Clean URL", style="blue", max_width=40)
 
     for item in items:
-        price_str = f"{item.price.amount:.2f} {item.price.currency}" if item.price else "N/A"
-        stock_str = item.stock_status.value if item.stock_status else "N/A"
-        cond_str = item.condition.value if item.condition else "N/A"
+        price_str = (
+            f"{item.price.amount:.2f} {item.price.currency}" if item.price else "[dim]—[/dim]"
+        )
+        if item.stock_status == StockStatus.IN_STOCK:
+            stock_str = "[bold green]in_stock[/bold green]"
+        elif item.stock_status == StockStatus.OUT_OF_STOCK:
+            stock_str = "[bold red]out_of_stock[/bold red]"
+        elif item.stock_status == StockStatus.PREORDER:
+            stock_str = "[bold yellow]preorder[/bold yellow]"
+        else:
+            stock_str = "[dim]—[/dim]"
+
+        cond_str = f"[cyan]{item.condition.value}[/cyan]" if item.condition else "[dim]—[/dim]"
+        brand_str = item.brand if item.brand else "[dim]—[/dim]"
+        sku_str = item.sku if item.sku else "[dim]—[/dim]"
+        merchant_str = item.merchant_name or "[dim]—[/dim]"
+
         table.add_row(
             f"{item.match_score}%",
             item.page_type.value,
-            item.brand or "N/A",
-            item.sku or "N/A",
+            brand_str,
+            sku_str,
             item.title[:30],
             price_str,
             stock_str,
             cond_str,
-            item.merchant_name or "N/A",
+            merchant_str,
             item.direct_url[:40],
         )
     return table
@@ -504,18 +518,32 @@ def search_cmd(
                 console.print(sum_table)
 
                 if c.items:
-                    products = c.products
-                    display_items = products if products else c.items[:15]
+                    # Deduplicate products by direct_url to eliminate redundant listing rows
+                    seen_urls: set[str] = set()
+                    unique_products: list[EnrichedCommerceMatch] = []
+                    for p in c.products:
+                        if p.direct_url not in seen_urls:
+                            seen_urls.add(p.direct_url)
+                            unique_products.append(p)
+
+                    # Display only verified products with detected pricing
+                    display_items = [p for p in unique_products if p.price is not None]
+                    if not display_items:
+                        # Fallback to unique product candidates or top items if no pricing was detected
+                        display_items = unique_products[:15] if unique_products else c.items[:15]
+
                     table_title = (
-                        "Commercial Products & Pricing" if products else "Enriched Visual Matches"
+                        "Commercial Products & Pricing"
+                        if any(p.price for p in display_items)
+                        else "Enriched Visual Matches"
                     )
                     console.print(_build_commerce_table(table_title, display_items))
 
                     articles_count = len(c.articles)
                     social_count = len(c.social)
-                    other_count = len(c.items) - len(products) - articles_count - social_count
+                    other_count = len(c.items) - len(c.products) - articles_count - social_count
                     console.print(
-                        f"[dim]ℹ Breakdown: {len(products)} commercial products, {articles_count} articles/editorial, "
+                        f"[dim]ℹ Breakdown: {len(c.products)} commercial products, {articles_count} articles/editorial, "
                         f"{social_count} social media, {other_count} other pages. "
                         f"Run with --export-json to export all structured items.[/dim]"
                     )

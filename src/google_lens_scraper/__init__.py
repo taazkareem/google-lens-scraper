@@ -36,7 +36,7 @@ if PRO_AVAILABLE:
     from .commerce import CommerceEnricher, export_commerce_to_csv, export_commerce_to_json
     from .license import LicenseInfo, LicenseManager, license_manager
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = [
     "__version__",

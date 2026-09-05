@@ -106,8 +106,8 @@ class EnrichedCommerceMatch(BaseModel):
     original_url: str = Field(default="", description="Original Google Lens destination link")
     price: NormalizedPrice | None = Field(default=None, description="Normalized price if listed")
     merchant_name: str | None = Field(default=None, description="Domain or seller name")
-    merchant_category: MerchantCategory = Field(
-        default=MerchantCategory.UNVERIFIED, description="Seller classification"
+    merchant_category: MerchantCategory | None = Field(
+        default=None, description="Seller classification"
     )
     thumbnail: str | None = Field(default=None, description="Thumbnail image URL")
     match_score: int = Field(default=100, description="Visual match confidence score (0-100%)")

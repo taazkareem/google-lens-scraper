@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and google-lens-scraper package
 metadata:
   author: taazkareem
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Google Lens Agent Skill

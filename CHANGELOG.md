@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-09-05
+
+### Fixed
+- **Persistent License Cache & Background Revalidation**: Fixed a critical bug where the 12-hour offline validation cache TTL caused `get_configured_key()` to discard the user's stored license key, locking active Pro users into Preview Mode. Decoupled disk key persistence (`check_ttl=False`) from offline cache validity, added automatic background revalidation when online, and established a 7-day offline grace period (`OFFLINE_GRACE_PERIOD_SECONDS`).
+- **High-Accuracy Merchant & Domain Classification**: Upgraded `MerchantClassifier` with clean second-level domain (SLD) extraction (`_extract_sld`), stripping multi-tenant subdomains (`www`, `store`, `shop`, `us`, etc.) and handling multi-part ccTLDs (`.co.uk`, `.com.ng`, `.co.ke`).
+- **Multi-Token Fuzzy Brand Matching**: Implemented normalized alphanumeric and multi-token fuzzy matching against detected brand, merchant name, and title (e.g. matching `rmfhq.com` with `RMFHQ`, `fadoshoes.com` with `Fado Shoes`, and `woolentor.com` with `WooLentor`).
+- **Enrichment Order & Non-Commercial Suppression**: Reordered enrichment so merchant classification runs after HTML metadata parsing. Set `merchant_category: MerchantCategory | None = None` to cleanly omit seller classifications on non-commercial pages (`article`, `social`, `portfolio`).
+- **Expanded Page Intent Heuristics**: Added comprehensive URL path and keyword patterns for editorial guides (`/fashion/`, `/advice/`, `/insights/`), developer portfolios/templates (`/template/`, `/redesign/`, `github.io`), and store catalogs (`/categories/`, `/collections/`, `/w/`, `.shop`).
+- **E-Commerce Variant & Price Fallbacks**: Added extraction support for Shopify variant groups (`hasVariant`), WooCommerce price spans, and microdata tags, restoring correct pricing for single-item and catalog teasers.
+
 ## [0.1.2] - 2026-09-05
 
 ### Added
