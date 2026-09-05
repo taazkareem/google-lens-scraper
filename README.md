@@ -124,13 +124,13 @@ Prompt your AI agent in plain English:
 
 <h2 align="center">💎 Google Lens Pro — Resale & Visual Intelligence Suite</h2>
 
-Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **Clean Canonical URLs**, **Multi-Currency Price Normalization**, **Best-Deal Detection**, and **Direct CSV Pipelines**:
+Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **Deep Destination Extraction** (Schema.org LD-JSON, Next.js hydration, OpenGraph), **Page Intent Classification**, **Stock & Availability Detection**, **Clean Canonical URLs**, **Multi-Currency Price Normalization**, **Best-Deal Detection**, and **Direct JSON Pipelines**:
 
 <br>
 
 | [**Monthly**](https://buy.polar.sh/polar_cl_nVrJAfC1HXmCMV1T2l1KwcbiiM0FavN8DccGo0K1E0Q?utm_source=github&utm_medium=readme) $19/mo | [**Annual**](https://buy.polar.sh/polar_cl_CWQxn1LtnLUbf5alOQMUgzTIQRQUrXjk6vXXQ0d5wBx?utm_source=github&utm_medium=readme) $99/yr | [**Lifetime**](https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8?utm_source=github&utm_medium=readme) $99 (Launch Special) |
 | :--- | :--- | :--- |
-| • Full pricing & currency normalization<br>• Canonical URL unwrapping<br>• 3 device activations<br>• Cancel anytime | • **Save 55%** ($8.25/mo)<br>• Best Deal lowest-price detector<br>• 3 device activations<br>• Priority updates | • **Best Value — One payment**<br>• Unlocked Forever<br>• 3 device activations<br>• 8K Studio Packshot Synthesis<br>• CSV / Excel export pipelines |
+| • Full pricing & currency normalization<br>• Canonical URL unwrapping<br>• 3 device activations<br>• Cancel anytime | • **Save 55%** ($8.25/mo)<br>• Best Deal lowest-price detector<br>• 3 device activations<br>• Priority updates | • **Best Value — One payment**<br>• Unlocked Forever<br>• 3 device activations<br>• Deep destination enrichment<br>• Direct JSON data pipelines |
 
 <br>
 
@@ -143,11 +143,16 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 </div>
 
 ### What Pro Adds:
-1. **🔗 Canonical URL Unwrapping**: Decodes opaque `google.com/url?q=...` redirects into direct, clean merchant product links, stripping UTM parameters and tracking noise.
-2. **💰 Normalized Pricing & Best Deals**: Auto-extracts numeric prices and currencies (USD, EUR, GBP, INR, etc.), computing market average/range and highlighting the lowest-priced verified seller.
-3. **🏷️ Merchant Categorization**: Labels domains as Official Brand stores (e.g. Nike, Apple), Major Marketplaces (Amazon, eBay, Walmart), or Resellers (StockX, GOAT, Chrono24).
-4. **📁 Clean JSON Data Pipelines**: Direct `--export-json` (or `--export`) flag for developer-grade hierarchical data without sparse, inconsistent CSV columns.
-5. **⚡ Multi-Device Activations**: Authorize up to 3 machines simultaneously via CLI (`google-lens pro activate <key>`) or purchase directly (`google-lens buy pro`) with self-service license management in the Polar customer portal.
+1. **🌐 Deep Destination Page Enrichment (`--enrich`)**: Concurrently fetches destination pages using Scrapling's high-performance HTTP engine to extract rich metadata that never appears in search snippets.
+2. **📦 Schema.org & Next.js Hydration Extraction**: Parses LD-JSON (`Product`, `Offer`), Next.js hydration payload (`__NEXT_DATA__`), and OpenGraph tags directly from merchant product pages.
+3. **🎯 Page Intent Classification (`page_type`)**: Automatically categorizes destination URLs into `product`, `article`, `social` (Instagram, TikTok, Pinterest), `portfolio`, `marketplace`, or `uncategorized` so you can instantly filter out non-shoppable links.
+4. **📊 Stock & Availability Detection (`stock_status`)**: Identifies real-time merchant stock levels (`in_stock`, `out_of_stock`, `preorder`) directly from product feeds.
+5. **🏷️ Item Condition & SKU Extraction (`condition`, `sku`)**: Captures condition (`new`, `used`, `refurbished`) and product identifiers (GTIN, UPC, SKU) for resale pricing and catalog matching.
+6. **🔗 Canonical URL Unwrapping**: Decodes opaque `google.com/url?q=...` redirects into direct, clean merchant product links, stripping UTM parameters, ad click-trackers, and Chrome text fragments.
+7. **💰 Normalized Pricing & Best Deals**: Auto-extracts numeric prices and currencies (USD, EUR, GBP, INR, etc.), computing market average/range and highlighting the lowest-priced verified seller.
+8. **🏪 Merchant Categorization**: Labels sellers as Official Brand stores (e.g. Nike, Apple), Major Marketplaces (Amazon, eBay, Walmart), or Resellers (StockX, GOAT, Chrono24).
+9. **📁 Clean JSON-First Data Pipelines**: Direct `--export-json` (or `--export`) flag for developer-grade hierarchical data without sparse, inconsistent CSV columns or `null` noise.
+10. **⚡ Multi-Device Activations**: Authorize up to 3 machines simultaneously via CLI (`google-lens pro activate <key>`) or purchase directly (`google-lens buy pro`) with self-service license management in the Polar customer portal.
 
 ---
 
@@ -159,13 +164,20 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 | **Search Volume** | **Unlimited Local Searches** | **Unlimited Local Searches** | Strictly Metered (5k/mo) | Metered per API call |
 | **Fast-Path OCR & Bounding Boxes** | ✅ Sub-second (Zero browser) | ✅ Sub-second (Zero browser) | ❌ High API latency | ✅ Paid per image |
 | **Visual Match Results** | ✅ Yes (Full Google Web Matches) | ✅ Yes (Full Google Web Matches) | ✅ Yes | ❌ Web detection only |
+| **Direct Canonical URLs** | ⚠️ Google redirect links | ✅ Clean direct merchant links | ❌ Often wrapped | ❌ N/A |
+| **Deep Destination Crawling (`--enrich`)** | 🔒 1-Item Teaser Preview | ✅ Concurrent Scrapling HTTP Engine | ❌ None (SERP only) | ❌ None |
+| **Schema.org & Next.js Hydration** | 🔒 1-Item Teaser Preview | ✅ Deep LD-JSON & `__NEXT_DATA__` | ❌ None | ❌ None |
+| **Page Intent Classification** | 🔒 1-Item Teaser Preview | ✅ Product vs Article vs Social | ❌ None | ❌ None |
+| **Stock & Availability Detection** | 🔒 1-Item Teaser Preview | ✅ In Stock, Out of Stock, Preorder | ❌ None | ❌ None |
+| **Condition & SKU / GTIN Extraction** | 🔒 1-Item Teaser Preview | ✅ New / Used / Refurbished + GTIN | ❌ None | ❌ None |
+| **Title Cleaning & Normalization** | Raw search snippet | ✅ Clean titles (cures "Read more") | ❌ Raw snippet only | ❌ None |
+| **Price Comparison & Best Deal** | 🔒 1-Item Teaser Preview | ✅ Full Min/Max/Avg + Best Deal | ❌ Raw unparsed strings | ❌ None |
+| **Merchant Categorization** | 🔒 1-Item Teaser Preview | ✅ Brand vs Marketplace vs Reseller | ❌ No | ❌ No |
+| **JSON Data Pipeline Export** | 🔒 Teaser Only | ✅ Full `--export-json` | ⚠️ Extra export fees | ❌ Custom code required |
 | **Product Attribute Extraction** | ✅ Native Zero-Key Deduction | ✅ Native + Gemini 3.8 Flash | ❌ None | ❌ None |
 | **8K Studio Packshots (`--studio`)** | ✅ Nano Banana Pro (w/ AI key) | ✅ Nano Banana Pro (w/ API key) | ❌ None | ❌ None |
-| **Direct Canonical URLs** | ⚠️ Google redirect links | ✅ Clean direct merchant links | ❌ Often wrapped | ❌ N/A |
-| **Price Comparison & Best Deal** | 🔒 1-Item Teaser Preview | ✅ Full Min/Max/Avg + Best Deal | ❌ Raw unparsed strings | ❌ None |
-| **Merchant Categorization** | 🔒 1-Item Teaser Preview | ✅ Brand vs Marketplace | ❌ No | ❌ No |
-| **JSON Data Pipeline Export** | 🔒 Teaser Only | ✅ Full `--export-json` | ⚠️ Extra export fees | ❌ Custom code required |
 | **AI Agent Skill (`SKILL.md`)** | ✅ Built-in ([agentskills.io](https://agentskills.io)) | ✅ Built-in ([agentskills.io](https://agentskills.io)) | ❌ Custom code required | ❌ Custom code required |
+
 
 ---
 
@@ -454,7 +466,7 @@ class LensSearchResult(BaseModel):
 
 ### Core Sub-Models:
 - **`VisualMatch`**: `title`, `link`, `thumbnail`, `source`, `price`.
-- **`CommerceIntelligence` (Pro)**: `summary` (min/max/average price across listings), `items` (clean canonical URLs, merchant classification), `best_deal` (lowest-price verified seller).
+- **`CommerceIntelligence` (Pro)**: `summary` (min/max/average price across listings), `products` (verified product matches with clean pricing, stock, condition, and SKU), `items` (all matches classified by `page_type`), `best_deal` (lowest-price verified seller).
 - **`VisualAnalysis`**: `summary`, `attributes` (`brand`, `model_or_name`, `category`, `color`, `materials`, `condition_assessment`, `authenticity_markers`, `confidence_score`), `resale_recommendation`, `tags`.
 - **`GeneratedStudioAsset`**: `image_path` (saved 8K file), `prompt_used`, `aspect_ratio`, `model`.
 - **`Cost Telemetry`**: `tokens.total`, `tokens.prompt`, `tokens.output`, `cost_usd.total`.
@@ -516,5 +528,5 @@ Run `google-lens install-skill` in your terminal. This installs the specificatio
 ## License & Commercial Terms
  
 - **Community Core & Agent Skill**: Open source under the [MIT License](LICENSE). Free for unlimited local visual search, reverse image lookups, sub-second Protobuf OCR, Knowledge Graph card extraction, and native zero-key attribute deductions.
-- **Pro Commercial Intelligence Suite** (`license.py`, `commerce.py`): Proprietary, see [LICENSE](LICENSE). Requires an active license key from [Polar.sh](https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8?utm_source=github&utm_medium=readme) for direct canonical URL unwrapping, normalized multi-currency price arbitrage, best-deal ranking, and automated CSV export pipelines.
+- **Pro Commercial Intelligence Suite** (`license.py`, `commerce.py`): Proprietary, see [LICENSE](LICENSE). Requires an active license key from [Polar.sh](https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8?utm_source=github&utm_medium=readme) for concurrent destination page enrichment, Schema.org LD-JSON and Next.js hydration extraction, page intent classification, stock status detection, direct canonical URL unwrapping, multi-currency price arbitrage, best-deal ranking, and automated JSON export pipelines.
 
