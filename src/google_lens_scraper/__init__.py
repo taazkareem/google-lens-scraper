@@ -33,10 +33,10 @@ from .models import (
 from .session import SessionManager
 
 if PRO_AVAILABLE:
-    from .commerce import CommerceEnricher, export_commerce_to_csv
+    from .commerce import CommerceEnricher, export_commerce_to_csv, export_commerce_to_json
     from .license import LicenseInfo, LicenseManager, license_manager
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = [
     "__version__",
@@ -74,6 +74,7 @@ if PRO_AVAILABLE:
     __all__ += [
         "CommerceEnricher",
         "export_commerce_to_csv",
+        "export_commerce_to_json",
         "LicenseInfo",
         "LicenseManager",
         "license_manager",

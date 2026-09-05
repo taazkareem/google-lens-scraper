@@ -35,3 +35,6 @@ Thumbs.db
 *.html
 *.png
 results.json
+teaser.csv
+sample_enriched.json
+benchmark_results.*

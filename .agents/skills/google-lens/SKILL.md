@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and google-lens-scraper package
 metadata:
   author: taazkareem
-  version: "0.1.0"
+  version: "0.1.2"
 ---
 
 # Google Lens Agent Skill
@@ -62,9 +62,9 @@ To resolve clean canonical URLs, normalized price ranges (min/max/average), and 
 google-lens search "<image-url-or-path>" --enrich --json-output
 ```
 
-To export enriched commerce data directly to CSV:
+To export enriched commerce data directly to clean JSON:
 ```bash
-google-lens search "<image-url-or-path>" --export-csv deals.csv
+google-lens search "<image-url-or-path>" --export-json deals.json
 ```
 
 ### 5. Real-Time Token & Cost Accounting
@@ -79,12 +79,13 @@ Every Gemini API invocation (Gemini 3.8 Flash and Nano Banana Pro) is automatica
 ```
 
 ### 6. License Activation & Setup (Pro)
-Pro features (market pricing intelligence, clean URLs, CSV export, studio packs) require an active Polar.sh license.
+Pro features (market pricing intelligence, clean URLs, JSON export, studio packs) require an active Polar.sh license.
 
 **Purchase a License (Browser):**
 ```bash
-google-lens pro buy
-# Or: google-lens-pro buy / google-lens buy
+google-lens buy pro
+# Or specify a plan:
+google-lens buy --plan annual
 ```
 *Opens the Polar.sh checkout page directly in your browser to choose a plan (Lifetime, Annual, or Monthly).*
 
@@ -95,6 +96,16 @@ google-lens pro activate "<your-polar-license-key>"
 google-lens pro activate
 # Or set environment variable:
 export LENS_LICENSE_KEY="<your-polar-license-key>"
+```
+
+**Check License Status:**
+```bash
+google-lens pro status
+```
+
+**Deactivate on this Machine:**
+```bash
+google-lens pro deactivate
 ```
 
 ### 7. Google AI Studio Key (Optional, For --studio Only)

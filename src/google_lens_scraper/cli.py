@@ -13,6 +13,7 @@ from pathlib import Path
 
 import click
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
@@ -20,6 +21,7 @@ from . import _pro
 from .client import LensScraper
 from .config import LensConfig
 from .exceptions import LensError, LensRateLimitError
+from .models import EnrichedCommerceMatch
 from .parser import PROG_NAME
 from .session import SessionManager
 
@@ -34,6 +36,39 @@ def _require_pro() -> None:
             "Google Lens Pro engines are not part of the MIT source tree. "
             "Install the published package instead: pip install google-lens-scraper"
         )
+
+
+def _build_commerce_table(title: str, items: list[EnrichedCommerceMatch]) -> Table:
+    """Builds the shared Rich table layout used for both preview and full commerce listings."""
+    table = Table(title=title)
+    table.add_column("Score", style="bold green", justify="right", width=6)
+    table.add_column("Type", style="bold cyan", width=12)
+    table.add_column("Brand", style="yellow", width=12)
+    table.add_column("SKU", style="dim", width=12)
+    table.add_column("Title", style="bold white", max_width=30)
+    table.add_column("Price", style="bold green", width=12)
+    table.add_column("Stock", style="magenta", width=12)
+    table.add_column("Condition", style="blue", width=10)
+    table.add_column("Merchant", style="cyan", width=14)
+    table.add_column("Clean URL", style="blue", max_width=40)
+
+    for item in items:
+        price_str = f"{item.price.amount:.2f} {item.price.currency}" if item.price else "N/A"
+        stock_str = item.stock_status.value if item.stock_status else "N/A"
+        cond_str = item.condition.value if item.condition else "N/A"
+        table.add_row(
+            f"{item.match_score}%",
+            item.page_type.value,
+            item.brand or "N/A",
+            item.sku or "N/A",
+            item.title[:30],
+            price_str,
+            stock_str,
+            cond_str,
+            item.merchant_name or "N/A",
+            item.direct_url[:40],
+        )
+    return table
 
 
 class DefaultGroup(click.Group):
@@ -258,9 +293,17 @@ cli.add_command(export_cmd, name="export")
     help="Custom prompt for Nano Banana Pro studio packshot synthesis",
 )
 @click.option(
+    "--export",
+    "--export-json",
+    "export_json",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Export enriched commerce data to a structured JSON file (Pro)",
+)
+@click.option(
     "--export-csv",
     type=click.Path(dir_okay=False, writable=True),
-    help="Export enriched commerce data to a CSV file (Pro)",
+    help="Deprecated: CSV export is deprecated, use --export-json",
+    hidden=True,
 )
 @click.option(
     "--headless/--no-headless", default=True, help="Run browser in headless mode (default: True)"
@@ -283,6 +326,7 @@ def search_cmd(
     studio_output: str | None,
     studio_prompt: str | None,
     export_csv: str | None,
+    export_json: str | None,
     headless: bool,
     cookies: str | None,
     proxy: str | None,
@@ -421,28 +465,16 @@ def search_cmd(
                     "\n[bold magenta]✨ Google Lens Pro — Commerce Intelligence (Preview)[/bold magenta]"
                 )
                 if c.items:
-                    preview_item = c.items[0]
-                    p_table = Table(title="Enriched Listing Preview")
-                    p_table.add_column("Title", style="bold white", max_width=35)
-                    p_table.add_column("Clean Direct URL", style="blue", max_width=45)
-                    p_table.add_column("Merchant", style="cyan")
-                    p_table.add_column("Category", style="green")
-                    p_table.add_column("Normalized Price", style="yellow")
-                    p_table.add_row(
-                        preview_item.title[:35],
-                        preview_item.direct_url[:45],
-                        preview_item.merchant_name or "N/A",
-                        preview_item.merchant_category.value,
-                        f"{preview_item.price.amount} {preview_item.price.currency}"
-                        if preview_item.price
-                        else "N/A",
+                    console.print(
+                        _build_commerce_table(
+                            "Deep Enriched Listing Preview (1-Item Teaser)", c.items[:1]
+                        )
                     )
-                    console.print(p_table)
 
                 if c.upgrade_message:
                     console.print(
                         Panel(
-                            c.upgrade_message,
+                            Markdown(c.upgrade_message),
                             border_style="magenta",
                             title="🔒 Unlock All Deals & Full Resale Analytics",
                         )
@@ -471,7 +503,27 @@ def search_cmd(
                     )
                 console.print(sum_table)
 
+                if c.items:
+                    products = c.products
+                    display_items = products if products else c.items[:15]
+                    table_title = (
+                        "Commercial Products & Pricing" if products else "Enriched Visual Matches"
+                    )
+                    console.print(_build_commerce_table(table_title, display_items))
+
+                    articles_count = len(c.articles)
+                    social_count = len(c.social)
+                    other_count = len(c.items) - len(products) - articles_count - social_count
+                    console.print(
+                        f"[dim]ℹ Breakdown: {len(products)} commercial products, {articles_count} articles/editorial, "
+                        f"{social_count} social media, {other_count} other pages. "
+                        f"Run with --export-json to export all structured items.[/dim]"
+                    )
+
             if export_csv:
+                console.print(
+                    "[yellow]⚠️ Note: CSV export is deprecated due to polymorphic Lens data; use --export-json for full structured intelligence.[/yellow]"
+                )
                 csv_path = _pro.export_commerce_to_csv(c, export_csv)
                 if c.is_preview:
                     console.print(
@@ -479,7 +531,18 @@ def search_cmd(
                     )
                 else:
                     console.print(
-                        f"[bold green]✓ Exported all {len(c.items)} commerce listings to:[/bold green] {csv_path}"
+                        f"[bold green]✓ Exported listings to:[/bold green] {csv_path}"
+                    )
+
+            if export_json:
+                json_path = _pro.export_commerce_to_json(c, export_json)
+                if c.is_preview:
+                    console.print(
+                        f"[yellow]⚠️ Preview Mode: Exported 1 teaser listing to {json_path}. Activate Pro (`google-lens activate`) to export all {len(results.visual_matches)} listings.[/yellow]"
+                    )
+                else:
+                    console.print(
+                        f"[bold green]✓ Exported all {len(c.items)} structured commerce listings to:[/bold green] {json_path}"
                     )
 
         elif not enrich and not json_output:
@@ -702,26 +765,52 @@ def license_group() -> None:
 
 
 @cli.command(name="buy")
+@click.argument("plan_arg", required=False)
 @click.option(
     "--plan",
     type=click.Choice(["lifetime", "monthly", "annual"], case_sensitive=False),
     default="lifetime",
     help="Plan to purchase (lifetime, monthly, or annual). Default: lifetime",
 )
-def buy_cmd(plan: str) -> None:
+@click.pass_context
+def buy_cmd(ctx: click.Context, plan_arg: str | None = None, plan: str = "lifetime") -> None:
     """Open the Polar.sh checkout page in your default browser to purchase Pro."""
-    plan_key = plan.lower()
-    checkout_url = _pro.POLAR_LINKS.get(plan_key, _pro.POLAR_LINKS["lifetime"])
+    chosen = (plan_arg or plan or "lifetime").lower()
+    if chosen in ("pro", "license"):
+        chosen = "lifetime"
+    checkout_url = _pro.POLAR_LINKS.get(chosen, _pro.POLAR_LINKS["lifetime"])
 
     console.print(
-        f"[bold cyan]Opening Polar.sh checkout for Google Lens Pro ({plan_key})...[/bold cyan]"
+        f"[bold cyan]Opening Polar.sh checkout for Google Lens Pro ({chosen})...[/bold cyan]"
     )
     console.print(f"Checkout URL: [underline blue]{checkout_url}[/underline blue]\n")
     webbrowser.open(checkout_url)
+
+    try:
+        console.print("[bold yellow]Waiting for checkout completion...[/bold yellow]")
+        console.print(
+            "[dim]Once checkout is complete on Polar, paste your license key below to activate immediately.[/dim]\n"
+        )
+        entered_key = click.prompt(
+            "Enter Polar License Key (or press Enter to activate later)",
+            default="",
+            show_default=False,
+        ).strip()
+        if entered_key:
+            console.print()
+            ctx.invoke(activate_cmd, key=entered_key)
+            return
+    except (click.Abort, EOFError):
+        pass
+
     console.print(
         "[green]After completing checkout, activate your license in terminal with:[/green]"
     )
-    console.print(f"  [bold cyan]{PROG_NAME} activate <your-key>[/bold cyan]\n")
+    console.print(f"  [bold cyan]{PROG_NAME} pro activate <your-key>[/bold cyan]\n")
+
+
+# Alias for buy
+cli.add_command(buy_cmd, name="purchase")
 
 
 @cli.command(name="activate")
@@ -810,6 +899,7 @@ def setup_ai_cmd(key: str | None, status: bool = False) -> None:
 
 
 @license_group.command(name="buy")
+@click.argument("plan_arg", required=False)
 @click.option(
     "--plan",
     type=click.Choice(["lifetime", "monthly", "annual"], case_sensitive=False),
@@ -817,9 +907,12 @@ def setup_ai_cmd(key: str | None, status: bool = False) -> None:
     help="Plan to purchase (lifetime, monthly, or annual). Default: lifetime",
 )
 @click.pass_context
-def buy_license_cmd(ctx: click.Context, plan: str) -> None:
+def buy_license_cmd(ctx: click.Context, plan_arg: str | None = None, plan: str = "lifetime") -> None:
     """Open the Polar.sh checkout page to purchase a Pro license."""
-    ctx.invoke(buy_cmd, plan=plan)
+    ctx.invoke(buy_cmd, plan_arg=plan_arg, plan=plan)
+
+
+license_group.add_command(buy_license_cmd, name="purchase")
 
 
 @license_group.command(name="activate")
@@ -859,7 +952,8 @@ def status_license_cmd() -> None:
 
     console.print(table)
     if not info.is_valid:
-        console.print("\n" + _pro.get_paywall_message())
+        console.print()
+        console.print(Markdown(_pro.get_paywall_message()))
 
 
 @license_group.command(name="deactivate")
@@ -879,6 +973,7 @@ def pro_group(ctx: click.Context) -> None:
 
 
 pro_group.add_command(buy_license_cmd, name="buy")
+pro_group.add_command(buy_license_cmd, name="purchase")
 pro_group.add_command(activate_license_cmd, name="activate")
 pro_group.add_command(status_license_cmd, name="status")
 pro_group.add_command(deactivate_license_cmd, name="deactivate")

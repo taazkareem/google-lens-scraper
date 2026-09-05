@@ -34,7 +34,15 @@ _LINK_PATTERN = re.compile(
 )
 _IMG_SRC_PATTERN = re.compile(r'<img[^>]+src="([^"]+)"', re.IGNORECASE)
 _TAG_PATTERN = re.compile(r"<[^>]+>")
-_PRICE_PATTERN = re.compile(r"[\$€£¥]\s*\d+(?:\.\d{2})?")
+
+# Recognized currency symbols/codes. Shared with commerce.py's PriceNormalizer so the two
+# price detectors can't silently drift apart on which currencies they recognize.
+CURRENCY_TOKEN_PATTERN = r"[\$€£¥₹]|USD|EUR|GBP|CAD|AUD|INR"
+_PRICE_PATTERN = re.compile(
+    rf"(?:{CURRENCY_TOKEN_PATTERN})\s*\d+(?:[,\.]\d+)*(?:\s*(?:USD|EUR|GBP|CAD|AUD|INR))?"
+    rf"|(?:\d+(?:[,\.]\d+)*\s*(?:{CURRENCY_TOKEN_PATTERN}))",
+    re.IGNORECASE,
+)
 _ENTITY_NAME_PATTERN = re.compile(r'data-entityname="([^"]+)"', re.IGNORECASE)
 _H1_PATTERN = re.compile(r"<h1[^>]*>([^<]+)</h1>", re.IGNORECASE)
 
@@ -147,10 +155,13 @@ class LensParser:
             source = text_blocks[0] if len(text_blocks) > 1 else ""
             title = text_blocks[1] if len(text_blocks) > 1 else text_blocks[0]
 
+            # container is `a` itself or an ancestor climbed to above, so its itertext()
+            # already includes the anchor's own text in document order.
             price = None
-            for tb in text_blocks:
-                if any(sym in tb for sym in ("$", "€", "£", "¥")):
-                    price = tb
+            for ct in container.itertext():
+                m = _PRICE_PATTERN.search(ct.strip())
+                if m:
+                    price = m.group(0)
                     break
 
             thumb = None

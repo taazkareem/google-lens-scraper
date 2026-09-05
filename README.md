@@ -81,7 +81,7 @@
 ```bash
 pip install google-lens-scraper
 ```
-*(Provides `google-lens`, `google-lens-scraper`, and `google-lens-pro` CLI commands)*
+*(Provides the `google-lens` CLI command)*
 
 Install the stealth Chromium browser binary:
 ```bash
@@ -146,8 +146,8 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 1. **🔗 Canonical URL Unwrapping**: Decodes opaque `google.com/url?q=...` redirects into direct, clean merchant product links, stripping UTM parameters and tracking noise.
 2. **💰 Normalized Pricing & Best Deals**: Auto-extracts numeric prices and currencies (USD, EUR, GBP, INR, etc.), computing market average/range and highlighting the lowest-priced verified seller.
 3. **🏷️ Merchant Categorization**: Labels domains as Official Brand stores (e.g. Nike, Apple), Major Marketplaces (Amazon, eBay, Walmart), or Resellers (StockX, GOAT, Chrono24).
-4. **📁 CSV & Data Pipelines**: Direct `--export-csv` flag for integrating into e-commerce databases, dropshipping workflows, and spreadsheet tools.
-5. **⚡ Multi-Device Activations**: Authorize up to 3 machines simultaneously via CLI (`google-lens pro activate <key>`) or purchase directly (`google-lens pro buy`) with self-service license management in the Polar customer portal.
+4. **📁 Clean JSON Data Pipelines**: Direct `--export-json` (or `--export`) flag for developer-grade hierarchical data without sparse, inconsistent CSV columns.
+5. **⚡ Multi-Device Activations**: Authorize up to 3 machines simultaneously via CLI (`google-lens pro activate <key>`) or purchase directly (`google-lens buy pro`) with self-service license management in the Polar customer portal.
 
 ---
 
@@ -164,7 +164,7 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 | **Direct Canonical URLs** | ⚠️ Google redirect links | ✅ Clean direct merchant links | ❌ Often wrapped | ❌ N/A |
 | **Price Comparison & Best Deal** | 🔒 1-Item Teaser Preview | ✅ Full Min/Max/Avg + Best Deal | ❌ Raw unparsed strings | ❌ None |
 | **Merchant Categorization** | 🔒 1-Item Teaser Preview | ✅ Brand vs Marketplace | ❌ No | ❌ No |
-| **CSV & Data Pipeline Export** | 🔒 Teaser Only | ✅ Full `--export-csv` | ⚠️ Extra export fees | ❌ Custom code required |
+| **JSON Data Pipeline Export** | 🔒 Teaser Only | ✅ Full `--export-json` | ⚠️ Extra export fees | ❌ Custom code required |
 | **AI Agent Skill (`SKILL.md`)** | ✅ Built-in ([agentskills.io](https://agentskills.io)) | ✅ Built-in ([agentskills.io](https://agentskills.io)) | ❌ Custom code required | ❌ Custom code required |
 
 ---
@@ -396,28 +396,34 @@ google-lens image.jpg --json-output | jq .visual_matches
 google-lens image.jpg --proxy "http://user:pass@proxy:8080"
 
 # -------------------------------------------------------------
-# 3. Pro Licensing & AI Studio (Optional Commercial Tier)
+# 3. Pro Licensing & Plans (Optional Commercial Tier)
 # -------------------------------------------------------------
 # Purchase Pro license (opens Polar.sh checkout in browser)
-google-lens pro buy       # or: google-lens buy / google-lens-pro buy
+google-lens buy pro                    # Opens Lifetime checkout (default)
+google-lens buy --plan annual          # Or: --plan monthly
 
-# Activate license in terminal (interactive prompt or direct key)
+# Activate license in terminal (direct key or interactive prompt)
 google-lens pro activate "<your-polar-license-key>"
-# Or run interactively:
-google-lens pro activate
+google-lens pro activate               # Interactive prompt
 
-# Export enriched product & arbitrage deals to CSV (Pro feature)
-google-lens image.jpg --export-csv deals.csv
+# Check license status & authorized devices
+google-lens pro status
 
+# Deactivate license on this machine
+google-lens pro deactivate
+
+# Export enriched product & arbitrage deals to clean JSON (Pro feature)
+google-lens image.jpg --export-json deals.json
+
+# -------------------------------------------------------------
+# 4. AI Studio (Optional 8K Packshots)
+# -------------------------------------------------------------
 # Optional: Configure Google AI Studio key (only needed for 8K --studio packshots)
 google-lens setup-ai --key "<your-gemini-api-key>"
+google-lens setup-ai --status
 
 # Generate 8K commercial studio packshot via Nano Banana Pro
 google-lens image.jpg --studio --studio-output ./packshot.png
-
-# Check license & AI configuration status
-google-lens license
-google-lens setup-ai --status
 ```
 
 > **Tip:** In `zsh` and other POSIX shells, always enclose URLs containing query parameters (`&`, `?`) in quotation marks (e.g. `google-lens "https://..."`) to prevent shell parse errors.
@@ -484,7 +490,7 @@ When you use `scraper.detect()` or the `--ocr-only` CLI flag, the library commun
 <details>
 <summary><b>Can I use this for e-commerce price comparison and resale arbitrage?</b></summary>
 
-Yes. Google Lens searches return structured visual matches across major e-commerce platforms (Amazon, eBay, Walmart, StockX, Nike, etc.). With the Pro suite enabled (`--enrich`), the scraper automatically unwraps Google redirect links into canonical merchant URLs, normalizes prices across currencies (USD, EUR, GBP, etc.), identifies the best deal, and exports structured data to CSV pipelines (`--export-csv`).
+Yes. Google Lens searches return structured visual matches across major e-commerce platforms (Amazon, eBay, Walmart, StockX, Nike, etc.). With the Pro suite enabled (`--enrich`), the scraper automatically unwraps Google redirect links into canonical merchant URLs, normalizes prices across currencies (USD, EUR, GBP, etc.), identifies the best deal, and exports structured data to JSON pipelines (`--export-json`).
 </details>
 
 <details>

@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
+from urllib.parse import urlencode
 
 if TYPE_CHECKING:
     from .session import SessionManager
@@ -29,6 +30,13 @@ BROWSER_LAUNCH_ARGS = (
 )
 BROWSER_VIEWPORT = {"width": 1440, "height": 1000}
 
+# Standard Chrome client hints to prevent headless detection via sec-ch-ua headers.
+DEFAULT_CLIENT_HINTS: dict[str, str] = {
+    "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+}
+
 # Browser interaction timings, in milliseconds.
 RESULTS_RENDER_TIMEOUT_MS = 15_000
 NETWORK_IDLE_TIMEOUT_MS = 8_000
@@ -49,6 +57,16 @@ _DEFAULT_CONSENT_COOKIES: tuple[dict[str, Any], ...] = (
     },
     {"name": "CONSENT", "value": "PENDING+999", "domain": GOOGLE_COOKIE_DOMAIN, "path": "/"},
 )
+
+
+def build_uploadbyurl_params(image_url: str, language: str) -> dict[str, str]:
+    """Builds the query params for a lens.google.com/uploadbyurl request."""
+    return {"url": image_url, "hl": language, "re": "df", "ep": "cntpubb"}
+
+
+def build_uploadbyurl_url(image_url: str, language: str) -> str:
+    """Builds the full lens.google.com/uploadbyurl request URL for direct browser navigation."""
+    return f"{LENS_UPLOAD_BY_URL}?{urlencode(build_uploadbyurl_params(image_url, language))}"
 
 
 def parse_cookie_string(raw: str) -> list[dict[str, Any]]:
@@ -103,8 +121,13 @@ class LensConfig:
         return self.user_agent or DEFAULT_USER_AGENT
 
     def get_headers(self, **extra: str) -> dict[str, str]:
-        """Builds request headers from the User-Agent, configured extras, and per-call additions."""
-        return {"User-Agent": self.get_user_agent(), **self.extra_headers, **extra}
+        """Builds request headers from the User-Agent, Chrome Client Hints, configured extras, and per-call additions."""
+        return {
+            "User-Agent": self.get_user_agent(),
+            **DEFAULT_CLIENT_HINTS,
+            **self.extra_headers,
+            **extra,
+        }
 
     def get_session_manager(self) -> SessionManager:
         """Returns a SessionManager bound to this configuration's session path."""
@@ -166,3 +189,11 @@ class LensConfig:
             )
 
         return cookie_list
+
+    def get_httpx_cookies(self) -> dict[str, str]:
+        """Converts configured cookies into a name-value mapping for httpx requests."""
+        return {
+            str(c["name"]): str(c["value"])
+            for c in self.get_playwright_cookies()
+            if "name" in c and "value" in c
+        }

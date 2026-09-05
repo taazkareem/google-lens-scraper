@@ -13,7 +13,12 @@ from typing import Any, cast
 
 from patchright.sync_api import sync_playwright
 
-from .config import DEFAULT_USER_AGENT, parse_cookie_string
+from .config import (
+    BROWSER_LAUNCH_ARGS,
+    DEFAULT_CLIENT_HINTS,
+    DEFAULT_USER_AGENT,
+    parse_cookie_string,
+)
 from .exceptions import LensRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -140,25 +145,36 @@ class SessionManager:
         Captures the resulting session cookies and saves them for headless reuse.
         """
         logger.info("Opening interactive browser for Google Lens authentication...")
+        existing_state = self.load_session()
+        launch_args = list(BROWSER_LAUNCH_ARGS) + [f"--user-agent={DEFAULT_USER_AGENT}"]
+
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=False)
-            context = browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent=DEFAULT_USER_AGENT,
-            )
+            browser = p.chromium.launch(headless=False, args=launch_args)
+            context_kwargs: dict[str, Any] = {
+                "viewport": {"width": 1280, "height": 800},
+                "user_agent": DEFAULT_USER_AGENT,
+                "extra_http_headers": DEFAULT_CLIENT_HINTS,
+            }
+            if existing_state:
+                context_kwargs["storage_state"] = existing_state
+            context = browser.new_context(**context_kwargs)
             page = context.new_page()
-            page.goto(
-                "https://accounts.google.com/ServiceLogin?hl=en", wait_until="domcontentloaded"
+
+            start_url = (
+                "https://www.google.com/search?q=google"
+                if existing_state and self.is_authenticated()
+                else "https://accounts.google.com/ServiceLogin?hl=en"
             )
+            page.goto(start_url, wait_until="domcontentloaded")
 
             if wait_for_enter and sys.stdin.isatty():
                 print("\n" + "=" * 60)
-                print(" Google Lens Authentication")
+                print(" Google Lens Authentication & Security Clearance")
                 print("=" * 60)
-                print("• A browser window has opened to Google Sign-In.")
-                print("• Please sign into your Google account in the browser window.")
-                print("  (An authenticated account bypasses Google's bot challenges permanently).")
-                print("• Once you are signed in, press [Enter] below to save your session.")
+                print("• A browser window has opened.")
+                print("• If you see a Sign-In prompt, please sign into your Google account.")
+                print("• If you see a CAPTCHA challenge ('unusual traffic'), click the checkbox.")
+                print("• Once Google displays search results normally, press [Enter] below.")
                 print("=" * 60)
                 with contextlib.suppress(EOFError, KeyboardInterrupt):
                     input("\nPress [Enter] to capture credentials and finish: ")
@@ -168,7 +184,7 @@ class SessionManager:
                 for _ in range(timeout_seconds):
                     cookies = context.cookies(["https://www.google.com", "https://lens.google.com"])
                     names = {c["name"] for c in cookies}
-                    if any(n in names for n in ("SOCS", "SID", "NID")):
+                    if any(n in names for n in ("SOCS", "SID", "NID")) and "sorry" not in page.url:
                         cleared = True
                         break
                     page.wait_for_timeout(1000)
@@ -178,6 +194,13 @@ class SessionManager:
                     raise LensRateLimitError(
                         "Timed out waiting for Google clearance in interactive browser."
                     )
+
+            # Ensure lens.google.com cross-domain tokens (e.g. OSID) are established
+            try:
+                page.goto("https://lens.google.com/", wait_until="domcontentloaded", timeout=10000)
+                page.wait_for_timeout(1500)
+            except Exception:
+                pass
 
             # Capture complete storage state
             state = cast(dict[str, Any], context.storage_state())

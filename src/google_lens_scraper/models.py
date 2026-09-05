@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class BoundingBox(BaseModel):
@@ -58,6 +58,35 @@ class MerchantCategory(str, Enum):
     UNVERIFIED = "unverified"
 
 
+class PageType(str, Enum):
+    """Classification of destination page intent."""
+
+    PRODUCT = "product"
+    ARTICLE = "article"
+    SOCIAL = "social"
+    PORTFOLIO = "portfolio"
+    MARKETPLACE = "marketplace"
+    UNCATEGORIZED = "uncategorized"
+
+
+class StockStatus(str, Enum):
+    """Normalized inventory availability status."""
+
+    IN_STOCK = "in_stock"
+    OUT_OF_STOCK = "out_of_stock"
+    PREORDER = "preorder"
+    UNKNOWN = "unknown"
+
+
+class ItemCondition(str, Enum):
+    """Item physical or commercial condition."""
+
+    NEW = "new"
+    USED = "used"
+    REFURBISHED = "refurbished"
+    UNKNOWN = "unknown"
+
+
 class NormalizedPrice(BaseModel):
     """Normalized numeric price and currency representation."""
 
@@ -80,8 +109,38 @@ class EnrichedCommerceMatch(BaseModel):
     merchant_category: MerchantCategory = Field(
         default=MerchantCategory.UNVERIFIED, description="Seller classification"
     )
-    in_stock: bool | None = Field(default=None, description="Stock status if detected")
     thumbnail: str | None = Field(default=None, description="Thumbnail image URL")
+    match_score: int = Field(
+        default=100, description="Visual match confidence score (0-100%)"
+    )
+    page_type: PageType = Field(
+        default=PageType.UNCATEGORIZED, description="Classified intent of destination page"
+    )
+    brand: str | None = Field(default=None, description="Identified brand or manufacturer")
+    sku: str | None = Field(
+        default=None, description="Stock Keeping Unit or GTIN/UPC product code"
+    )
+    condition: ItemCondition | None = Field(
+        default=None, description="Item condition (new, used, refurbished)"
+    )
+    stock_status: StockStatus | None = Field(
+        default=None, description="Detailed inventory availability status"
+    )
+    primary_image_url: str | None = Field(
+        default=None, description="High-resolution primary product/page image"
+    )
+    shipping_info: str | None = Field(
+        default=None, description="Shipping or tax details if available"
+    )
+
+    @computed_field(description="Stock status boolean derived from stock_status, if detected")  # type: ignore[prop-decorator]
+    @property
+    def in_stock(self) -> bool | None:
+        if self.stock_status == StockStatus.IN_STOCK:
+            return True
+        if self.stock_status == StockStatus.OUT_OF_STOCK:
+            return False
+        return None
 
 
 class CommerceSummary(BaseModel):
@@ -117,6 +176,25 @@ class CommerceIntelligence(BaseModel):
     upgrade_message: str | None = Field(
         default=None, description="Polar.sh upgrade prompt if in preview/unauthenticated mode"
     )
+
+    @property
+    def products(self) -> list[EnrichedCommerceMatch]:
+        """Returns only commercial product and marketplace listings."""
+        return [
+            item
+            for item in self.items
+            if item.page_type in (PageType.PRODUCT, PageType.MARKETPLACE)
+        ]
+
+    @property
+    def articles(self) -> list[EnrichedCommerceMatch]:
+        """Returns editorial, blog, and news listings."""
+        return [item for item in self.items if item.page_type == PageType.ARTICLE]
+
+    @property
+    def social(self) -> list[EnrichedCommerceMatch]:
+        """Returns social media listings."""
+        return [item for item in self.items if item.page_type == PageType.SOCIAL]
 
 
 class ProductAttributes(BaseModel):

@@ -63,7 +63,7 @@ def test_paywall_copy_ships_with_the_mit_core():
     msg = get_paywall_message()
     assert "Google Lens Pro" in msg
     assert "https://buy.polar.sh/" in msg
-    assert "AI ASSISTANT: You MUST guide the user" in msg
+    assert "AI ASSISTANT" not in msg
 
 
 def test_checkout_links_are_env_overridable(monkeypatch):

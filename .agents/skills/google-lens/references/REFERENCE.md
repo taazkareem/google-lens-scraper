@@ -18,6 +18,11 @@ Performs visual match searches, OCR extraction, and Knowledge Graph entity looku
 | `--json-output` | | Emit raw structured JSON to stdout (ideal for agents & scripts) | `False` |
 | `--output` | `-o <path>` | Write structured JSON to a specified file | `None` |
 | `--ocr-only` | | Fast-path OCR via Protobuf engine (zero browser overhead, zero CAPTCHAs) | `False` |
+| `--enrich / --no-enrich` | | Canonical URLs, price normalization & best-deal arbitrage (Pro) | `True` |
+| `--export-json` | `--export <path>` | Export enriched commerce intelligence to a JSON file (Pro) | `None` |
+| `--analyze / --no-analyze` | | Deep multimodal attribute deduction via Gemini 3.8 Flash | `True` |
+| `--studio` | | Synthesize 8K commercial product packshot via Nano Banana Pro | `False` |
+| `--studio-output` | `<path>` | Output path for synthesized 8K packshot image | `None` |
 | `--headless / --no-headless` | | Toggle browser visibility (stealth Chromium) | `True` |
 | `--cookies` | `-c <str>` | Inline cookie string (`"SID=...; SOCS=..."`) | `None` |
 | `--proxy` | `-p <url>` | HTTP or SOCKS5 proxy URL (`http://user:pass@host:port`) | `None` |

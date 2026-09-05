@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.2] - 2026-09-05
+
+### Added
+- **JSON-First Architecture & Export**: Standardized on `--export-json` (and `--export`) for clean hierarchical JSON exports. Deprecated `--export-csv` to cleanly handle polymorphic Google Lens SERP listings without sparse, empty columns.
+- **Deep Destination Page Intelligence**: Integrated concurrent async Scrapling fetching to extract Schema.org JSON-LD (`Product`, `ProductGroup`, `Offer`), Next.js hydration state (`__NEXT_DATA__`), and OpenGraph metadata.
+- **Title Normalization & URL Sanitization**: Auto-unwraps Google redirect wrappers, strips tracking parameters (`utm_*`, `fbclid`, `gclid`), strips Chrome text fragments (`#:~:text=...`), and repairs generic or swapped titles (`"Read more"`).
+- **Polymorphic Page Classification**: Added `PageType` classification (`product`, `marketplace`, `article`, `portfolio`, `social`, `uncategorized`) and category properties (`c.products`, `c.articles`, `c.social`) on `CommerceIntelligence`.
+- **Focused CLI Product Intelligence**: Formatted terminal output now showcases verified commercial products (`c.products`) in pricing tables, with articles and social listings summarized in a clean breakdown line.
+
+### Fixed
+- **Anti-Bot & Fingerprint Masking**: Enforced authentic Chrome desktop User-Agent and Client Hints (`sec-ch-ua`, `sec-ch-ua-mobile`, `sec-ch-ua-platform`) across all sync and async browser contexts, completely eliminating `HeadlessChrome` detection leaks.
+- **Session Cookie Propagation**: Automatically attach authenticated session cookies (`get_httpx_cookies()`) to `httpx.Client` requests, preventing anonymous vs. authenticated session mismatch flags on Google Lens ingestion.
+- **DOM Card Price Extraction**: Updated `LensParser.extract_from_dom_cards` to climb parent card containers (`N54PNb`) and extract price badges placed outside `<a>` tags in modern Google Lens layouts.
+- **Expanded Currency Recognition**: Broadened `_PRICE_PATTERN` to support prefix and suffix currency symbols (`$`, `€`, `£`, `¥`, `₹`, `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `INR`) and comma/dot thousands separators.
+- **Dynamic DOM Polling**: Replaced static CSS selector timeouts with `_wait_for_matches` live DOM polling, eliminating race conditions during asynchronous card hydration.
+- **Interactive Security Clearance**: Enhanced `google-lens login` to launch with full stealth headers and navigate directly to Google Search, allowing users to solve pending reCAPTCHAs/unusual traffic challenges and capture cross-domain `OSID` tokens on `lens.google.com`.
 
 ## [0.1.1] - 2026-09-05
 
@@ -43,7 +58,7 @@ First public release on PyPI.
 ### Added — Pro Commercial Intelligence (proprietary, requires a Polar.sh license key)
 
 - `CommerceEnricher` (`--enrich`): canonical URL unwrapping (Google redirect decoding and tracking-parameter stripping), multi-currency price normalization, merchant categorization, and lowest-price best-deal detection.
-- `export_commerce_to_csv` and `--export-csv` for CSV export of enriched listings.
+- `export_commerce_to_json` and `--export-json` (alias `--export`) for hierarchical JSON export of enriched listings.
 - Without an active license key, enrichment runs in preview mode: a single teaser listing, with pricing analytics and best-deal detection withheld.
 - `LicenseManager` and the `pro` command group (`buy`, `activate`, `status`, `deactivate`), mirrored by the `license` group and by top-level `buy` / `activate` shortcuts; `upgrade` prints plans and opens checkout.
 - License keys are read from `LENS_LICENSE_KEY` or `GOOGLE_LENS_LICENSE_KEY`, or from a local cache that permits 12 hours of offline validation.

@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,7 +19,6 @@ from .ai_studio import StudioSynthesizer
 from .config import (
     BROWSER_LAUNCH_ARGS,
     BROWSER_VIEWPORT,
-    GOOGLE_IMAGE_UPLOAD_URL,
     LENS_UPLOAD_BY_URL,
     LENS_UPLOAD_URL,
     NETWORK_IDLE_TIMEOUT_MS,
@@ -28,6 +28,8 @@ from .config import (
     SCROLL_SETTLE_MS,
     UPLOAD_POLL_INTERVAL_MS,
     LensConfig,
+    build_uploadbyurl_params,
+    build_uploadbyurl_url,
 )
 from .exceptions import (
     LensConfigurationError,
@@ -36,8 +38,8 @@ from .exceptions import (
     LensParseError,
 )
 from .gemini_cost_calculator.accumulator import UsageAccumulator
-from .models import LensSearchResult
-from .parser import VISUAL_MATCH_SELECTOR, LensParser
+from .models import KnowledgeGraph, LensSearchResult, VisualMatch
+from .parser import LensParser
 from .protobuf_engine import ProtobufEngine
 
 
@@ -59,7 +61,9 @@ class AsyncLensScraper:
         return int(self.config.timeout * 1000)
 
     def _http_client(self, **kwargs: Any) -> httpx.AsyncClient:
-        """Builds an httpx client carrying the configured timeout and proxy."""
+        """Builds an httpx client carrying the configured timeout, proxy, and session cookies."""
+        if "cookies" not in kwargs:
+            kwargs["cookies"] = self.config.get_httpx_cookies()
         return httpx.AsyncClient(timeout=self.config.timeout, proxy=self.config.proxy, **kwargs)
 
     @asynccontextmanager
@@ -74,6 +78,10 @@ class AsyncLensScraper:
         storage_state = self.config.get_storage_state()
         cookies = self.config.get_playwright_cookies(storage_state)
 
+        ua = self.config.get_user_agent()
+        launch_args = list(BROWSER_LAUNCH_ARGS) + [f"--user-agent={ua}"]
+        extra_headers = self.config.get_headers()
+
         async with async_playwright() as p:
             browser = None
             if self.config.user_data_dir:
@@ -81,10 +89,10 @@ class AsyncLensScraper:
                     "user_data_dir": str(Path(self.config.user_data_dir).resolve()),
                     "executable_path": self.config.executable_path,
                     "headless": self.config.headless,
-                    "args": list(BROWSER_LAUNCH_ARGS),
+                    "args": launch_args,
+                    "user_agent": ua,
+                    "extra_http_headers": extra_headers,
                 }
-                if self.config.user_agent:
-                    p_kwargs["user_agent"] = self.config.user_agent
                 context = await p.chromium.launch_persistent_context(**p_kwargs)
                 page = context.pages[0] if context.pages else await context.new_page()
             elif self.config.cdp_url:
@@ -95,11 +103,13 @@ class AsyncLensScraper:
                 browser = await p.chromium.launch(
                     executable_path=self.config.executable_path,
                     headless=self.config.headless,
-                    args=list(BROWSER_LAUNCH_ARGS),
+                    args=launch_args,
                 )
-                context_kwargs: dict[str, Any] = {"viewport": dict(BROWSER_VIEWPORT)}
-                if self.config.user_agent:
-                    context_kwargs["user_agent"] = self.config.user_agent
+                context_kwargs: dict[str, Any] = {
+                    "viewport": dict(BROWSER_VIEWPORT),
+                    "user_agent": ua,
+                    "extra_http_headers": extra_headers,
+                }
                 if storage_state:
                     context_kwargs["storage_state"] = storage_state
                 context = await browser.new_context(**context_kwargs)
@@ -123,6 +133,24 @@ class AsyncLensScraper:
             await page.wait_for_timeout(SCROLL_SETTLE_MS)
         except Exception:
             pass
+
+    @staticmethod
+    async def _wait_for_matches(
+        page: Any, timeout_ms: int
+    ) -> tuple[list[VisualMatch], KnowledgeGraph | None]:
+        """Polls the live DOM until the parser finds visual matches or the timeout elapses.
+
+        A static CSS selector wait is unreliable here: Google's obfuscated card class names
+        rotate, and generic attributes like data-item-id can match unrelated page elements
+        before the actual match grid has hydrated. Polling the real extraction logic ties the
+        wait directly to the success condition instead of guessing at markup.
+        """
+        deadline = time.monotonic() + timeout_ms / 1000
+        matches, kg = LensParser.parse_html(await page.content())
+        while not matches and time.monotonic() < deadline:
+            await page.wait_for_timeout(UPLOAD_POLL_INTERVAL_MS)
+            matches, kg = LensParser.parse_html(await page.content())
+        return matches, kg
 
     async def detect(self, query: str | Path | bytes) -> LensSearchResult:
         """Fast-path only (async): extracts OCR and objects via Protobuf without browser rendering."""
@@ -172,7 +200,7 @@ class AsyncLensScraper:
             res = await self.search_file(value)
 
         if enrich:
-            res = _pro.enrich(res)
+            res = await _pro.enrich_async(res)
 
         accumulator = UsageAccumulator(default_model="gemini-3.8-flash")
 
@@ -235,12 +263,7 @@ class AsyncLensScraper:
 
     async def upload_image_url(self, image_url: str) -> str:
         """Resolves an image URL into a Google Lens search result URL (async)."""
-        params = {
-            "url": image_url,
-            "hl": self.config.language,
-            "re": "df",
-            "ep": "cntpubb",
-        }
+        params = build_uploadbyurl_params(image_url, self.config.language)
         try:
             async with self._http_client(
                 headers=self.config.get_headers(), follow_redirects=False
@@ -273,11 +296,19 @@ class AsyncLensScraper:
         """Performs in-browser visual search using Playwright/Patchright with direct file input (async)."""
         async with self._browser_page() as page:
             await page.goto(
-                GOOGLE_IMAGE_UPLOAD_URL,
+                "https://www.google.com",
                 wait_until="domcontentloaded",
                 timeout=self._timeout_ms,
             )
             LensParser.check_url(page.url)
+
+            # Click the "Search by image" camera button to reveal the file input
+            camera_btn = await page.wait_for_selector(
+                'div[role="button"][aria-label*="Search by image"], div[aria-label*="Search by image"]',
+                timeout=self._timeout_ms,
+            )
+            if camera_btn:
+                await camera_btn.click()
 
             file_input = await page.wait_for_selector(
                 'input[type="file"]',
@@ -292,7 +323,7 @@ class AsyncLensScraper:
             )
 
             # Wait for Google to process upload and transition to search results URL
-            for _ in range(max(5, int(self.config.timeout))):
+            for _ in range(max(10, int(self.config.timeout))):
                 await page.wait_for_timeout(UPLOAD_POLL_INTERVAL_MS)
                 if "vsrid=" in page.url:
                     break
@@ -300,17 +331,9 @@ class AsyncLensScraper:
             current_url = page.url
             LensParser.check_url(current_url)
 
-            # Wait for visual match cards to render
-            try:
-                await page.wait_for_selector(
-                    VISUAL_MATCH_SELECTOR, timeout=RESULTS_RENDER_TIMEOUT_MS
-                )
-            except Exception:
-                await page.wait_for_timeout(RENDER_FALLBACK_MS)
-
             await self._settle(page)
 
-            visual_matches, kg = LensParser.parse_html(await page.content())
+            visual_matches, kg = await self._wait_for_matches(page, RESULTS_RENDER_TIMEOUT_MS)
 
             return LensSearchResult(
                 query_url=current_url,
@@ -327,19 +350,18 @@ class AsyncLensScraper:
 
     async def search_image_url(self, image_url: str) -> LensSearchResult:
         """Searches using a public image URL (async)."""
-        # Downloading the image and asking Lens to resolve the URL are independent.
-        image_bytes, search_url = await asyncio.gather(
-            self._fetch_image_bytes(image_url),
-            self.upload_image_url(image_url),
-        )
-        # So are the Protobuf fast path and the browser extraction of the search URL.
+        image_bytes = await self._fetch_image_bytes(image_url)
+
+        # Authenticated in-browser visual search via uploadbyurl entrypoint
+        upload_url = build_uploadbyurl_url(image_url, self.config.language)
+
         proto_data, web_res = await asyncio.gather(
             self.protobuf_engine.process_image_bytes(image_bytes),
-            self.search_url(search_url),
+            self.search_url(upload_url),
         )
 
         return LensSearchResult(
-            query_url=search_url,
+            query_url=web_res.query_url or upload_url,
             search_session_id=proto_data.get("search_session_id"),
             server_session_id=proto_data.get("server_session_id"),
             ocr_text=proto_data.get("ocr_text"),
@@ -365,7 +387,7 @@ class AsyncLensScraper:
             current_url = page.url
             LensParser.check_url(current_url)
 
-            visual_matches, kg = LensParser.parse_html(await page.content())
+            visual_matches, kg = await self._wait_for_matches(page, RESULTS_RENDER_TIMEOUT_MS)
 
             return LensSearchResult(
                 query_url=current_url,
