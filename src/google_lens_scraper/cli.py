@@ -530,9 +530,7 @@ def search_cmd(
                         f"[yellow]⚠️ Preview Mode: Exported 1 teaser listing to {csv_path}. Activate Pro (`google-lens activate`) to export all {len(results.visual_matches)} listings.[/yellow]"
                     )
                 else:
-                    console.print(
-                        f"[bold green]✓ Exported listings to:[/bold green] {csv_path}"
-                    )
+                    console.print(f"[bold green]✓ Exported listings to:[/bold green] {csv_path}")
 
             if export_json:
                 json_path = _pro.export_commerce_to_json(c, export_json)
@@ -907,7 +905,9 @@ def setup_ai_cmd(key: str | None, status: bool = False) -> None:
     help="Plan to purchase (lifetime, monthly, or annual). Default: lifetime",
 )
 @click.pass_context
-def buy_license_cmd(ctx: click.Context, plan_arg: str | None = None, plan: str = "lifetime") -> None:
+def buy_license_cmd(
+    ctx: click.Context, plan_arg: str | None = None, plan: str = "lifetime"
+) -> None:
     """Open the Polar.sh checkout page to purchase a Pro license."""
     ctx.invoke(buy_cmd, plan_arg=plan_arg, plan=plan)
 

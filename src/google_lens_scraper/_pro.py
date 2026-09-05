@@ -86,7 +86,9 @@ async def enrich_async(result: LensSearchResult) -> LensSearchResult:
         return result
 
     if license_manager.validate().is_valid:
-        result.commerce = await CommerceEnricher.process_async(result.visual_matches, is_preview=False)
+        result.commerce = await CommerceEnricher.process_async(
+            result.visual_matches, is_preview=False
+        )
     else:
         result.commerce = await CommerceEnricher.process_async(
             result.visual_matches,

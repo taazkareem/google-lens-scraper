@@ -110,16 +110,12 @@ class EnrichedCommerceMatch(BaseModel):
         default=MerchantCategory.UNVERIFIED, description="Seller classification"
     )
     thumbnail: str | None = Field(default=None, description="Thumbnail image URL")
-    match_score: int = Field(
-        default=100, description="Visual match confidence score (0-100%)"
-    )
+    match_score: int = Field(default=100, description="Visual match confidence score (0-100%)")
     page_type: PageType = Field(
         default=PageType.UNCATEGORIZED, description="Classified intent of destination page"
     )
     brand: str | None = Field(default=None, description="Identified brand or manufacturer")
-    sku: str | None = Field(
-        default=None, description="Stock Keeping Unit or GTIN/UPC product code"
-    )
+    sku: str | None = Field(default=None, description="Stock Keeping Unit or GTIN/UPC product code")
     condition: ItemCondition | None = Field(
         default=None, description="Item condition (new, used, refurbished)"
     )

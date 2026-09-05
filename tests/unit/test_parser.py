@@ -79,4 +79,3 @@ def test_extract_from_dom_cards_with_container_prices():
     assert matches[2].title == "Luxury Sneaker"
     assert matches[2].source == "Luxe"
     assert matches[2].price == "£1,250.00"
-
