@@ -1,0 +1,91 @@
+Google Lens Scraper is dual-licensed.
+
+The MIT License below covers every file in this distribution EXCEPT the two
+modules named here, which are proprietary:
+
+    google_lens_scraper/license.py
+    google_lens_scraper/commerce.py
+
+and the compiled forms of those two modules shipped in binary wheels
+(license.*.so, license.*.pyd, commerce.*.so, commerce.*.pyd, and the shared
+mypyc extension module built from them).
+
+Those modules are covered by the Proprietary License that follows the MIT text.
+
+===============================================================================
+MIT License  --  Community Core
+===============================================================================
+
+Copyright (c) 2026 Google Lens Scraper Contributors
+
+In this section, "the Software" means the files covered by this MIT License as
+scoped above, and does not include the proprietary modules listed.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+===============================================================================
+Proprietary License  --  Pro Commercial Intelligence Suite
+===============================================================================
+
+Copyright (c) 2026 Talib Kareem. All rights reserved.
+
+In this section, "the Pro Modules" means the proprietary modules listed at the
+top of this file, in source or compiled form.
+
+1. Grant. Subject to your compliance with these terms, and for as long as you
+   hold a valid, active license key issued through Polar.sh for this software,
+   you are granted a non-exclusive, non-transferable, revocable license to use
+   the Pro Modules for your own purposes, personal or commercial, on the number
+   of devices permitted by your plan.
+
+2. Preview use. Without a valid license key, the Pro Modules operate only in
+   their built-in limited preview mode. Running them in that mode is permitted;
+   no other rights are granted.
+
+3. Restrictions. You may not:
+   (a) copy, redistribute, publish, sublicense, rent, lease, or resell the Pro
+       Modules, in source or compiled form, whether alone or as part of another
+       work;
+   (b) share, publish, or resell a license key, or use a key on more devices
+       than your plan permits;
+   (c) reverse engineer, decompile, or disassemble the Pro Modules, except to
+       the extent applicable law expressly permits despite this restriction;
+   (d) remove, disable, circumvent, or interfere with the license validation or
+       the preview limits, or assist anyone else in doing so;
+   (e) remove or alter any copyright, license, or attribution notice.
+
+4. Reservation. All rights not expressly granted are reserved. This license
+   conveys no ownership in the Pro Modules.
+
+5. Termination. This license terminates automatically if you breach these terms
+   or if your license key lapses, is revoked, or is not renewed. On termination
+   you must stop using the Pro Modules beyond preview mode.
+
+6. No warranty. THE PRO MODULES ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+   KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+7. Limitation of liability. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE
+   FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE PRO
+   MODULES OR THEIR USE. Nothing here limits liability that cannot be limited
+   under applicable law.
+
+Refunds, plan terms, and device activation limits are governed by the purchase
+terms shown at checkout on Polar.sh.

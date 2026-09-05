@@ -1,0 +1,175 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "google-lens-scraper"
+version = "0.1.0"
+description = "Unofficial Google Lens Python API & scraper. Fast reverse image search, visual matches, sub-second OCR, and product lookup with zero API keys or SerpApi fees."
+readme = "README.md"
+license = "MIT AND LicenseRef-Proprietary"
+requires-python = ">=3.10"
+authors = [
+    { name = "Talib Kareem" }
+]
+keywords = [
+    "google-lens",
+    "google-lens-api",
+    "reverse-image-search",
+    "visual-search",
+    "image-search",
+    "image-lookup",
+    "visual-matches",
+    "similar-images",
+    "scraper",
+    "web-scraping",
+    "scrapling",
+    "patchright",
+    "playwright",
+    "browser-automation",
+    "headless-chrome",
+    "stealth",
+    "ocr",
+    "optical-character-recognition",
+    "text-extraction",
+    "computer-vision",
+    "image-recognition",
+    "knowledge-graph",
+    "product-search",
+    "price-tracking",
+    "serpapi-alternative",
+    "agent-skill",
+    "ai-agent",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "scrapling[fetchers]>=0.4.15",
+    "pydantic>=2.0.0",
+    "click>=8.0.0",
+    "rich>=10.0.0",
+    "httpx>=0.24.0",
+    "pillow>=9.0.0",
+    "protobuf>=4.20.0",
+    "chrome-lens-py>=3.4.0",
+    "google-genai>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "build>=1.2.0",
+    "twine>=5.0.0",
+]
+
+[project.scripts]
+google-lens = "google_lens_scraper.cli:main"
+google-lens-scraper = "google_lens_scraper.cli:main"
+google-lens-pro = "google_lens_scraper.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/taazkareem/google-lens-scraper"
+Documentation = "https://github.com/taazkareem/google-lens-scraper#readme"
+Repository = "https://github.com/taazkareem/google-lens-scraper.git"
+Issues = "https://github.com/taazkareem/google-lens-scraper/issues"
+Changelog = "https://github.com/taazkareem/google-lens-scraper/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/google_lens_scraper"]
+
+[tool.hatch.build.targets.wheel.force-include]
+".agents/skills/google-lens" = "google_lens_scraper/data/skill/google-lens"
+
+# Compile the proprietary Pro engines to native C extensions (no shipped .py source).
+# Opt-in: set HATCH_BUILD_HOOK_ENABLE_MYPYC=1 (CI wheels). Plain installs stay pure Python.
+[tool.hatch.build.targets.wheel.hooks.mypyc]
+enable-by-default = false
+dependencies = ["hatch-mypyc>=0.16.0", "mypy>=1.10.0"]
+include = [
+    "src/google_lens_scraper/license.py",
+    "src/google_lens_scraper/commerce.py",
+]
+mypy-args = ["--ignore-missing-imports"]
+options = { debug_level = "0" }
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/.agents",
+]
+
+# Native wheels for PyPI. Only CPython — mypyc needs it.
+# ponytail: no linux-aarch64/musllinux; add archs here when someone asks for them.
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = "*musllinux*"
+environment = { HATCH_BUILD_HOOK_ENABLE_MYPYC = "1" }
+test-requires = "pytest"
+test-command = [
+    "python {project}/scripts/verify_compiled.py",
+    # test_license.py stays out: mock.patch can't setattr on a native class, so those
+    # four tests only run against the pure-Python build in ci.yml.
+    "pytest {project}/tests/unit/test_commerce.py -q",
+]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501", # line length handled by formatter
+    "B008", # do not perform function calls in argument defaults (click/pydantic)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["google_lens_scraper"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
