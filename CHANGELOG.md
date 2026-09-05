@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-05
+
+### Fixed
+- Use absolute raw GitHub asset URLs in `README.md` so the project banner and UI divider lines render correctly on PyPI.
+- Updated shields.io badge parameters to bypass proxy caching.
+- Resolved Apple Silicon (`macos-14`) CI wheel builds with dynamic OpenSSL discovery and foreign-arch test skipping for cross-compiled Intel wheels.
+- Moved `POLAR_LINKS` and paywall copy to MIT core (`_pro.py`) so `google-lens buy` works on all installations.
+
 ## [0.1.0] - 2026-09-05
 
 First public release on PyPI.
