@@ -6,17 +6,15 @@
 
 # Google Lens Scraper (`google-lens-scraper`)
 
-[![PyPI version](https://img.shields.io/pypi/v/google-lens-scraper.svg)](https://pypi.org/project/google-lens-scraper/)
-[![Python versions](https://img.shields.io/pypi/pyversions/google-lens-scraper.svg)](https://pypi.org/project/google-lens-scraper/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/google-lens-scraper.svg)](https://pypi.org/project/google-lens-scraper/)
+[![PyPI version](https://img.shields.io/pypi/v/google-lens-scraper?color=blue)](https://pypi.org/project/google-lens-scraper/)
+[![Python versions](https://img.shields.io/pypi/pyversions/google-lens-scraper?color=blue)](https://pypi.org/project/google-lens-scraper/)
+[![GitHub Stars](https://img.shields.io/github/stars/taazkareem/google-lens-scraper?style=flat&color=yellow)](https://github.com/taazkareem/google-lens-scraper/stargazers)
 [![License: Proprietary / Dual](https://img.shields.io/badge/License-Dual%20MIT%20%2F%20Pro-blue.svg)](LICENSE)
 [![Polar Pro](https://img.shields.io/badge/Polar.sh-Pro%20Available-0069ff.svg)](https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8)
 [![Agent Skill: google-lens](https://img.shields.io/badge/Agent%20Skill-google--lens-8A2BE2.svg)](https://agentskills.io)
 
-**Google Lens Scraper** is a high-performance Python package and CLI for reverse-engineered **Google Lens visual search**, **reverse image lookup**, and **OCR text extraction** using **Patchright** stealth browser automation and native **Chromium Protobuf** protocols.
+**Google Lens Scraper** is a high-performance Python package and CLI for reverse-engineered **Google Lens visual search**, **reverse image lookup**, and **OCR text extraction** using **Patchright** stealth browser automation and native **Chromium Protobuf** protocols. Fast, developer-friendly, and self-hosted alternative to expensive cloud proxy APIs like SerpApi and TinEye. No API keys required. Optional Pro Tier available with complete features.
 
-> 💡 **Looking for an unofficial Google Lens API for Python?**  
-> `google-lens-scraper` is a fast, developer-friendly, self-hosted alternative to expensive cloud proxy APIs like SerpApi and TinEye. Query reverse image lookups, visual product matches, knowledge graph entities, and sub-second OCR directly in Python or from the terminal — **with zero API keys required and no per-search fees**.
 
 ---
 
