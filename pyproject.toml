@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "google-lens-scraper"
 version = "0.1.0"
-description = "High-performance Google Lens reverse image search, visual match scraper, and OCR extraction engine for Python."
+description = "Unofficial Google Lens Python API & scraper. Fast reverse image search, visual matches, sub-second OCR, and product lookup with zero API keys or SerpApi fees."
 readme = "README.md"
 license = "MIT AND LicenseRef-Proprietary"
 requires-python = ">=3.10"
