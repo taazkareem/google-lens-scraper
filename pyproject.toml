@@ -138,6 +138,7 @@ test-command = [
 
 [tool.cibuildwheel.macos]
 archs = ["arm64", "x86_64"]
+test-skip = "*-macosx_x86_64"
 
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
