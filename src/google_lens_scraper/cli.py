@@ -710,7 +710,6 @@ def license_group() -> None:
 )
 def buy_cmd(plan: str) -> None:
     """Open the Polar.sh checkout page in your default browser to purchase Pro."""
-    _require_pro()
     plan_key = plan.lower()
     checkout_url = _pro.POLAR_LINKS.get(plan_key, _pro.POLAR_LINKS["lifetime"])
 
@@ -893,7 +892,6 @@ pro_group.add_command(deactivate_license_cmd, name="deactivate")
 )
 def upgrade_cmd(open_browser: bool) -> None:
     """View Google Lens Pro plans and open Polar checkout."""
-    _require_pro()
     console.print(
         Panel(
             "[bold cyan]Google Lens Pro — Pricing & Plans[/bold cyan]\n\n"
