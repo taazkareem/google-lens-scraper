@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/banner.jpg" alt="Google Lens Scraper — Unofficial Python API, Reverse Image Search & Fast-Path OCR" width="100%" style="border-radius: 8px;">
+  <img src="https://raw.githubusercontent.com/taazkareem/google-lens-scraper/main/assets/banner.jpg" alt="Google Lens Scraper — Unofficial Python API, Reverse Image Search & Fast-Path OCR" width="100%" style="border-radius: 8px;">
 </div>
 
 <br/>
@@ -135,7 +135,7 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 <br>
 
 <p align="center">
-  <img src="./assets/images/line.svg" width="150" alt="divider line" style="vertical-align: middle;">&nbsp;&nbsp;<a href="https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8?utm_source=github&utm_medium=readme"><img src="https://img.shields.io/badge/PURCHASE%20PRO%20LICENSE-0069ff?style=for-the-badge&logo=polar&logoColor=white" alt="Purchase License" style="vertical-align: middle;"></a>&nbsp;&nbsp;<img src="./assets/images/line.svg" width="150" alt="divider line" style="vertical-align: middle;">
+  <img src="https://raw.githubusercontent.com/taazkareem/google-lens-scraper/main/assets/images/line.svg" width="150" alt="divider line" style="vertical-align: middle;">&nbsp;&nbsp;<a href="https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8?utm_source=github&utm_medium=readme"><img src="https://img.shields.io/badge/PURCHASE%20PRO%20LICENSE-0069ff?style=for-the-badge&logo=polar&logoColor=white" alt="Purchase License" style="vertical-align: middle;"></a>&nbsp;&nbsp;<img src="https://raw.githubusercontent.com/taazkareem/google-lens-scraper/main/assets/images/line.svg" width="150" alt="divider line" style="vertical-align: middle;">
 </p>
 
 <br>
