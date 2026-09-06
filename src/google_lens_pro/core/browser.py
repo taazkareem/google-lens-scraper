@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Iterator
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from pathlib import Path
 from typing import Any
 
@@ -72,19 +72,13 @@ def browser_page(config: LensConfig) -> Iterator[Any]:
         try:
             yield page
         finally:
-            try:
+            with suppress(Exception):
                 page.close()
-            except Exception:
-                pass
-            try:
+            with suppress(Exception):
                 context.close()
-            except Exception:
-                pass
             if browser:
-                try:
+                with suppress(Exception):
                     browser.close()
-                except Exception:
-                    pass
 
 
 @asynccontextmanager
@@ -138,16 +132,10 @@ async def async_browser_page(config: LensConfig) -> AsyncIterator[Any]:
         try:
             yield page
         finally:
-            try:
+            with suppress(Exception):
                 await page.close()
-            except Exception:
-                pass
-            try:
+            with suppress(Exception):
                 await context.close()
-            except Exception:
-                pass
             if browser:
-                try:
+                with suppress(Exception):
                     await browser.close()
-                except Exception:
-                    pass

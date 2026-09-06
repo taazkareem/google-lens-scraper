@@ -292,7 +292,9 @@ def recompute_market_summary(
         item for item in active_pool if item.stock_status != StockStatus.OUT_OF_STOCK
     ]
     candidate_pool = in_stock_candidates if in_stock_candidates else active_pool
-    best_item = min(candidate_pool, key=lambda item: item.price.amount if item.price else float("inf"))
+    best_item = min(
+        candidate_pool, key=lambda item: item.price.amount if item.price else float("inf")
+    )
     currency = (
         (best_item.price.currency if best_item.price else None)
         or original_summary.currency

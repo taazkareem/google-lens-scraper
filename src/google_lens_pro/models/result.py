@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 from .commerce import CommerceIntelligence, GeneratedStudioAsset, VisualAnalysis

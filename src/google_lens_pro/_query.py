@@ -56,4 +56,3 @@ def classify_query(query: str | Path | bytes) -> tuple[QueryKind, Any]:
 
     # If it's not a file or URL, it's a product title, barcode, or text query
     return "text", query_str
-

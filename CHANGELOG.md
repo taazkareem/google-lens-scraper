@@ -13,8 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clean transition to `google_lens_pro` namespace and published CLI aliases `lens`, `google-lens`, and `google-lens-pro`.
   - Updated all documentation, license files, CI workflows, and assets (including a brand new AI-generated `assets/banner.jpg`).
 - **Direct Store Product URL Crawler (`DirectStoreResolver`)**:
-  - Automatically crawls merchant search results concurrently using Scrapling's `AsyncFetcher` to resolve exact direct product SKU URLs (e.g. `poshmark.com/listing/...`, `goat.com/sneakers/...`, `flightclub.com/...`) instead of generic site search URLs.
-  - Concurrency limited via `asyncio.Semaphore(8)` with URL deduplication cache and 4-second timeout.
+  - Concurrently crawls merchant search results in one page-pooled Scrapling stealth browser session (patchright/Chromium) to resolve exact direct product SKU URLs (e.g. `poshmark.com/listing/...`, `lyst.com/shoes/...`, `grailed.com/listings/...`) instead of generic site search URLs.
+  - Title-similarity validation rejects wrong-product matches (e.g. a GOAT search resolving to an unrelated Air Jordan); links that can't be validated keep their original search URL.
+  - Concurrency limited via `asyncio.Semaphore(4)` with a URL deduplication cache, a 20-URL per-run cap, and a 15-second per-page timeout. Cloudflare-gated stores (e.g. StockX) and stores that bot-wall datacenter IPs fall back to the search URL.
   - Real-time progress updates stream live to the terminal spinner (`Resolving direct product links (X/Y)...`).
 - **Free vs. Pro Tier Clarification & Paywall Precision**:
   - Clarified that Google Lens visual reverse image search, OCR text extraction, and Gemini 3.8 Flash multimodal vision are completely free / BYOK (`GEMINI_API_KEY`).
@@ -34,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Unified Fusion Pipeline (`FusionOrchestrator`)**:
   - Unifies Google Lens visual matches, Gemini multimodal identification, real-time Google Shopping offers, and deep destination metadata.
   - Cross-source merchant deduplication, unified market pricing analytics (min/max/average prices), and verified best deal highlight.
-  - Exposed via `GoogleLens.fuse()` and `AsyncGoogleLens.fuse()`, as well as `google_lens_scraper._pro.fuse()`.
+  - Exposed via `GoogleLens.fuse()` and `AsyncGoogleLens.fuse()`, as well as `google_lens_pro._pro.fuse()`.
 - **Smart CLI Dispatch & `lens` Binary**:
   - Added short CLI binary alias `lens` in `[project.scripts]`.
   - Smart root CLI dispatch: `lens <input>` automatically routes text queries/UPCs to Google Shopping (`shop`) and image paths/URLs/bytes to Google Lens visual search (`search`).
@@ -53,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Suppressed Redundant SERP Tables**: Suppressed the raw 20-row Google Lens visual matches table during enriched searches, eliminating duplicate listing dumps while retaining raw tables when `--no-enrich` is explicitly requested.
 
 ### Removed
+- **Rotted Store Search-URL Templates**: Removed ~17 hardcoded per-store search-endpoint templates (`editorialist`, `modesens`, `stockx`, `ebay`, `goat`, `walmart`, `amazon`, `nike`, `farfetch`, …) from `_resolve_merchant_url`. Several 404'd on every query and the rest bot-wall automated traffic, so linkless Google Shopping offers were being handed dead search URLs built from raw listing titles (seller closet names, sizes, SKU codes and all). Offers with no genuine outbound link now route to the real Google Shopping product page when a product id is present, otherwise a Google search over a cleaned product phrase — both always resolve. Verified crawlable stores (`poshmark`, `lyst`, `grailed`) keep a search URL that `DirectStoreResolver` upgrades to a direct product page.
 - **Hardcoded Product Category Guesses**: Removed arbitrary domain keyword guessing (`"Running Shoes / Sneakers"`, `"Luxury Watches"`, `"Consumer Electronics"`) from native fallback deduction in `deduce_native_analysis()`. The engine now preserves Google Lens's authentic Knowledge Graph classification (`knowledge_graph.subtitle`) when available, and omits speculative category labels cleanly when unverified.
 - **Domain-Specific Footwear Heuristics**: Removed hardcoded checks for `"shoes"`, `"sneakers"`, `"footwear"`, and `"nike"` from `CommerceEnricher` page type classification, restoring universal category-agnostic classification across all product verticals.
 - **Static Merchant Title Cleaner Regex**: Replaced hardcoded 12-merchant regex (`GOAT`, `eBay`, `StockX`, `Amazon`, `Walmart`, `TheRealReal`, `Grailed`, `SeedProd`, `WooLentor`, `Shopify`, `B&H`, `Chrono24`) in title cleaning with dynamic candidate source, SLD, and domain matching.

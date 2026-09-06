@@ -7,6 +7,7 @@ Data models for Google Shopping search results, store offers, and comparison pag
 from __future__ import annotations
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 from .common import ItemCondition, MerchantCategory, NormalizedPrice, StockStatus
@@ -27,7 +28,9 @@ class ShoppingOffer(BaseModel):
         default=None, description="Original MSRP or pre-discount price"
     )
     shipping_info: str | None = Field(default=None, description="Shipping cost or delivery terms")
-    rating: float | None = Field(default=None, description="Product or seller star rating (1.0-5.0)")
+    rating: float | None = Field(
+        default=None, description="Product or seller star rating (1.0-5.0)"
+    )
     review_count: int | None = Field(default=None, description="Total review count")
     condition: ItemCondition | None = Field(default=ItemCondition.NEW, description="Item condition")
     stock_status: StockStatus | None = Field(

@@ -19,7 +19,7 @@ from rich.table import Table
 
 from . import _pro
 from ._query import classify_query
-from .client import GoogleLens, LensScraper
+from .client import LensScraper
 from .config import LensConfig
 from .exceptions import LensError, LensRateLimitError
 from .models import (
@@ -105,9 +105,7 @@ def _build_shopping_table(title: str, offers: list[ShoppingOffer]) -> Table:
 
     for idx, offer in enumerate(offers, 1):
         price_str = (
-            f"{offer.price.amount:.2f} {offer.price.currency}"
-            if offer.price
-            else "[dim]—[/dim]"
+            f"{offer.price.amount:.2f} {offer.price.currency}" if offer.price else "[dim]—[/dim]"
         )
         ship_str = offer.shipping_info or "[dim]Standard[/dim]"
         rating_str = f"★ {offer.rating:.1f}" if offer.rating else "[dim]—[/dim]"
@@ -300,9 +298,7 @@ def _build_executive_panel(results: LensSearchResult) -> Panel:
         if (c and not c.is_preview)
         else "🧠 Multimodal Visual & Market Intelligence"
     )
-    return Panel(
-        content, title=f"[bold cyan]{panel_title}[/bold cyan]", border_style="cyan"
-    )
+    return Panel(content, title=f"[bold cyan]{panel_title}[/bold cyan]", border_style="cyan")
 
 
 class DefaultGroup(click.Group):
@@ -497,10 +493,14 @@ cli.add_command(export_cmd, name="export")
 @click.option("--country", default="US", help="Target country code (e.g. US, UK, CA, DE, FR)")
 @click.option("--currency", default="USD", help="Target currency code (e.g. USD, EUR, GBP, CAD)")
 @click.option(
-    "--deep", is_flag=True, help="Deep scrape multi-seller comparison tables (/shopping/product/...)"
+    "--deep",
+    is_flag=True,
+    help="Deep scrape multi-seller comparison tables (/shopping/product/...)",
 )
 @click.option("--max-results", default=40, help="Maximum offers to extract (default: 40)")
-@click.option("--json", "--json-output", "json_output", is_flag=True, help="Output formatted JSON to stdout")
+@click.option(
+    "--json", "--json-output", "json_output", is_flag=True, help="Output formatted JSON to stdout"
+)
 @click.option(
     "--export-csv",
     type=click.Path(dir_okay=False, writable=True),
@@ -542,7 +542,13 @@ def shop_cmd(
         country=country,
         currency=currency,
     )
-    from .engines.shopping.engine import ShoppingEngine
+    try:
+        from .engines.shopping.engine import ShoppingEngine
+    except ImportError as e:
+        raise click.ClickException(
+            "Google Shopping search needs the Pro engine, which isn't in the MIT "
+            "source tree. Install the published package: pip install google-lens-pro"
+        ) from e
 
     engine = ShoppingEngine(config=config)
 
@@ -687,7 +693,9 @@ def shop_cmd(
 @click.option(
     "--cdp-url", help="Connect to an existing Chrome browser over CDP (e.g. http://localhost:9222)"
 )
-@click.option("--country", default="US", help="Target country code for localization (e.g. US, UK, CA, DE, FR)")
+@click.option(
+    "--country", default="US", help="Target country code for localization (e.g. US, UK, CA, DE, FR)"
+)
 @click.option("--currency", default="USD", help="Target currency code (e.g. USD, EUR, GBP, CAD)")
 @click.option("--deep", is_flag=True, help="Deep scrape multi-seller comparative product tables")
 @click.option("--timeout", default=30.0, help="Request timeout in seconds")
@@ -724,7 +732,7 @@ def search_cmd(
     if kind == "text":
         if not json_output:
             console.print(f"[bold cyan]Routing text query to Google Shopping:[/bold cyan] {query}")
-        return ctx.invoke(
+        ctx.invoke(
             shop_cmd,
             query=query,
             country=country,
@@ -738,6 +746,7 @@ def search_cmd(
             proxy=proxy,
             timeout=timeout,
         )
+        return
 
     config = LensConfig(
         headless=headless,

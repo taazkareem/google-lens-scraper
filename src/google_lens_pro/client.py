@@ -362,7 +362,6 @@ class LensScraper:
 
         return res
 
-
     def upload_image(self, image_bytes: bytes) -> str:
         """Uploads image bytes to Google Lens ingestion and returns the generated search URL."""
         try:
@@ -555,4 +554,3 @@ class LensScraper:
 GoogleLens = LensScraper
 
 __all__ = ["GoogleLens", "LensScraper", "ProgressCallback"]
-

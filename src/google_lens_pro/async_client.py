@@ -331,7 +331,9 @@ class AsyncLensScraper:
             )
 
         if fuse:
-            await _invoke_progress(on_progress, "Fusing Google Lens matches & Google Shopping offers...")
+            await _invoke_progress(
+                on_progress, "Fusing Google Lens matches & Google Shopping offers..."
+            )
             res = await _pro.fuse_async(res, config=self.config, on_progress=on_progress)
         elif enrich:
             match_count = len(res.visual_matches)
@@ -563,4 +565,3 @@ class AsyncLensScraper:
 AsyncGoogleLens = AsyncLensScraper
 
 __all__ = ["AsyncGoogleLens", "AsyncLensScraper", "ProgressCallback"]
-

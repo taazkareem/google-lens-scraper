@@ -52,7 +52,11 @@ _base_session_dir = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".confi
 _new_session_dir = _base_session_dir / "google-lens-pro"
 _legacy_session_dir = _base_session_dir / "google-lens-scraper"
 
-DEFAULT_SESSION_DIR = _new_session_dir if _new_session_dir.exists() or not _legacy_session_dir.exists() else _legacy_session_dir
+DEFAULT_SESSION_DIR = (
+    _new_session_dir
+    if _new_session_dir.exists() or not _legacy_session_dir.exists()
+    else _legacy_session_dir
+)
 DEFAULT_SESSION_FILE = DEFAULT_SESSION_DIR / "session.json"
 
 

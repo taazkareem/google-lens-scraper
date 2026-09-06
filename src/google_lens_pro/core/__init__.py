@@ -19,7 +19,11 @@ from .exceptions import (
     ShoppingRateLimitError,
 )
 from .fetcher import ConcurrentFetcher
-from .license import LicenseInfo, LicenseManager, license_manager
+
+try:
+    from .license import LicenseInfo, LicenseManager, license_manager
+except ImportError:  # MIT source tree — the Pro license engine is stripped.
+    LicenseInfo = LicenseManager = license_manager = None  # type: ignore[assignment,misc]
 
 __all__ = [
     "ConcurrentFetcher",

@@ -69,7 +69,11 @@ _base_config_dir = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config
 _new_config_dir = _base_config_dir / "google-lens-pro"
 _legacy_config_dir = _base_config_dir / "google-lens-scraper"
 
-CONFIG_DIR = _new_config_dir if _new_config_dir.exists() or not _legacy_config_dir.exists() else _legacy_config_dir
+CONFIG_DIR = (
+    _new_config_dir
+    if _new_config_dir.exists() or not _legacy_config_dir.exists()
+    else _legacy_config_dir
+)
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 

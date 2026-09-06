@@ -8,7 +8,7 @@ Pro goes through here, so exactly one place has to cope with them being absent.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from .models import LensSearchResult
@@ -101,9 +101,7 @@ async def enrich_async(
 
     if license_manager.validate().is_valid:
         try:
-            return await fuse_async(
-                result, enable_shopping=True, on_progress=on_progress
-            )
+            return await fuse_async(result, enable_shopping=True, on_progress=on_progress)
         except Exception:
             result.commerce = await CommerceEnricher.process_async(
                 result.visual_matches, is_preview=False, on_progress=on_progress
@@ -132,12 +130,15 @@ def fuse(
     from .pipeline.orchestrator import FusionOrchestrator
 
     orchestrator = FusionOrchestrator(config=config)
-    return _run_coroutine(
-        orchestrator.fuse_async(
-            lens_result=result,
-            enable_shopping=enable_shopping,
-            on_progress=on_progress,
-        )
+    return cast(
+        "LensSearchResult",
+        _run_coroutine(
+            orchestrator.fuse_async(
+                lens_result=result,
+                enable_shopping=enable_shopping,
+                on_progress=on_progress,
+            )
+        ),
     )
 
 
@@ -158,4 +159,3 @@ async def fuse_async(
         enable_shopping=enable_shopping,
         on_progress=on_progress,
     )
-

@@ -145,7 +145,7 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 
 ### What Pro Adds:
 1. **🌐 Multi-Store Pricing Fusion (`--enrich`)**: Concurrently scrapes Google Shopping SERPs and fuses 50+ live merchant offers (StockX, GOAT, Flight Club, eBay, Walmart, Poshmark) with Google Lens visual discovery.
-2. **🔎 Direct Store Product URL Crawler**: Concurrently crawls merchant search endpoints to resolve exact, direct product SKU URLs (e.g. `poshmark.com/listing/...`, `goat.com/sneakers/...`, `ebay.com/itm/...`).
+2. **🔎 Direct Store Product URL Crawler**: Runs a page-pooled stealth browser (patchright/Chromium) over merchant search results to resolve exact, direct product SKU URLs (e.g. `poshmark.com/listing/...`, `lyst.com/shoes/...`), with title-similarity validation so a search never resolves to the wrong product. Offers with no verifiable store link fall back to a Google Shopping product page or search rather than a dead URL.
 3. **📦 Schema.org & Next.js Hydration Extraction**: Parses LD-JSON (`Product`, `Offer`), Next.js hydration payload (`__NEXT_DATA__`), and OpenGraph tags directly from merchant product pages.
 4. **🎯 Page Intent Classification (`page_type`)**: Automatically categorizes destination URLs into `product`, `article`, `social` (Instagram, TikTok, Pinterest), `portfolio`, `marketplace`, or `uncategorized` so you can instantly filter out non-shoppable links.
 5. **📊 Stock & Availability Detection (`stock_status`)**: Identifies real-time merchant stock levels (`in_stock`, `out_of_stock`, `preorder`) directly from product feeds.

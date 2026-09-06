@@ -10,8 +10,6 @@ from .ai_studio import StudioSynthesizer
 from .async_client import AsyncGoogleLens, AsyncLensScraper
 from .client import GoogleLens, LensScraper
 from .config import LensConfig
-from .engines.shopping.engine import ShoppingEngine
-from .engines.shopping.parser import ShoppingParser
 from .exceptions import (
     LensConfigurationError,
     LensError,
@@ -46,8 +44,16 @@ from .models import (
     VisualAnalysis,
     VisualMatch,
 )
-from .pipeline.orchestrator import FusionOrchestrator
 from .session import SessionManager
+
+# Google Shopping + fusion pipeline depend on the Pro commerce engine. On the MIT
+# source tree (no commerce/) these resolve to None rather than breaking `import`.
+try:
+    from .engines.shopping.engine import ShoppingEngine
+    from .engines.shopping.parser import ShoppingParser
+    from .pipeline.orchestrator import FusionOrchestrator
+except ImportError:
+    ShoppingEngine = ShoppingParser = FusionOrchestrator = None  # type: ignore[assignment,misc]
 
 if PRO_AVAILABLE:
     from .commerce import (

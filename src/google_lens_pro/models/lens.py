@@ -7,6 +7,7 @@ Google Lens visual search and object detection models.
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+
 from .common import BoundingBox
 
 

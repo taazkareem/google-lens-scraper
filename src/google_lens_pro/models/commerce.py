@@ -7,6 +7,7 @@ Data models for enriched commerce intelligence, market valuation, and visual AI 
 from __future__ import annotations
 
 from typing import Any
+
 from pydantic import BaseModel, Field, computed_field
 
 from .common import (
@@ -36,7 +37,9 @@ class EnrichedCommerceMatch(BaseModel):
         default=None, description="Seller classification"
     )
     thumbnail: str | None = Field(default=None, description="Thumbnail image URL")
-    match_score: int = Field(default=100, description="Visual/product match confidence score (0-100%)")
+    match_score: int = Field(
+        default=100, description="Visual/product match confidence score (0-100%)"
+    )
     relevance: MatchRelevance | None = Field(
         default=None,
         description="Semantic relevance of this listing to the identified target product",
@@ -61,9 +64,7 @@ class EnrichedCommerceMatch(BaseModel):
     shipping_info: str | None = Field(
         default=None, description="Shipping or tax details if available"
     )
-    source_engine: str = Field(
-        default="lens", description="Origin of match ('lens' or 'shopping')"
-    )
+    source_engine: str = Field(default="lens", description="Origin of match ('lens' or 'shopping')")
 
     @computed_field(description="Stock status boolean derived from stock_status, if detected")  # type: ignore[prop-decorator]
     @property

@@ -307,7 +307,9 @@ def test_deduce_native_analysis_filters_generic_serp_titles():
     ocr = "NIKE\nFIRN FLYKNI\nNIKE FREE"
     matches = [
         VisualMatch(title="Sustainable Canvas Sneakers – Ur", link="https://woolentor.com"),
-        VisualMatch(title="Nike Free RN Flyknit 2017 - GOAT", link="https://goat.com", source="GOAT"),
+        VisualMatch(
+            title="Nike Free RN Flyknit 2017 - GOAT", link="https://goat.com", source="GOAT"
+        ),
         VisualMatch(title="Running Shoes Elite | LUXE", link="https://luxe.com"),
     ]
 
@@ -337,4 +339,3 @@ def test_deduce_native_analysis_preserves_kg_category():
     assert res is not None
     assert res.attributes.category == "Athletic Footwear"
     assert res.attributes.brand == "Nike"
-

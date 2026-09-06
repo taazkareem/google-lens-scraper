@@ -104,6 +104,7 @@ _GENERIC_SERP_TITLES = {
     "similar images",
 }
 
+
 def deduce_native_analysis(
     visual_matches: Sequence[VisualMatch] | None = None,
     knowledge_graph: KnowledgeGraph | None = None,
@@ -131,11 +132,7 @@ def deduce_native_analysis(
     # 2. Extract OCR tokens if available for dynamic cross-referencing
     ocr_tokens: set[str] = set()
     if ocr_text:
-        ocr_tokens = {
-            t
-            for t in re.findall(r"[a-z0-9]+", ocr_text.lower())
-            if len(t) > 2
-        }
+        ocr_tokens = {t for t in re.findall(r"[a-z0-9]+", ocr_text.lower()) if len(t) > 2}
 
     best_match: VisualMatch | None = None
 
@@ -143,19 +140,11 @@ def deduce_native_analysis(
     if not title and visual_matches:
         valid_candidates: list[tuple[int, int, VisualMatch]] = []
         for idx, m in enumerate(visual_matches):
-            if (
-                not m.title
-                or m.title.strip().lower() in _GENERIC_SERP_TITLES
-                or len(m.title) <= 3
-            ):
+            if not m.title or m.title.strip().lower() in _GENERIC_SERP_TITLES or len(m.title) <= 3:
                 continue
 
             # Calculate token intersection with OCR text
-            title_tokens = {
-                t
-                for t in re.findall(r"[a-z0-9]+", m.title.lower())
-                if len(t) > 2
-            }
+            title_tokens = {t for t in re.findall(r"[a-z0-9]+", m.title.lower()) if len(t) > 2}
             overlap = len(ocr_tokens.intersection(title_tokens)) if ocr_tokens else 0
             # Sort priority: highest OCR overlap first, then Google Lens rank order (lowest index)
             valid_candidates.append((overlap, -idx, m))
@@ -214,10 +203,7 @@ def deduce_native_analysis(
         # Fallback to the leading capitalized word of the title (standard in commerce titles)
         if not brand:
             first_word = re.sub(r"[^\w]", "", words[0])
-            if (
-                len(first_word) > 1
-                and first_word.lower() not in _GENERIC_SERP_TITLES
-            ):
+            if len(first_word) > 1 and first_word.lower() not in _GENERIC_SERP_TITLES:
                 brand = first_word
 
     attributes = ProductAttributes(
