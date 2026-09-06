@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from google_lens_scraper.cli import cli, get_skill_source_path
+from google_lens_pro.cli import cli, get_skill_source_path
 
 
 def parse_frontmatter(content: str) -> tuple[dict[str, str], str]:
@@ -100,7 +100,7 @@ class TestSkillSpecCompliance:
             code = s.read_text(encoding="utf-8")
             assert "# /// script" in code, f"{s.name} missing PEP 723 header"
             assert "# ///" in code, f"{s.name} missing PEP 723 closing tag"
-            assert "google-lens-scraper" in code, f"{s.name} missing dependency declaration"
+            assert "google-lens-pro" in code, f"{s.name} missing dependency declaration"
             # Ensure valid python syntax
             compile(code, str(s), "exec")
 

@@ -104,6 +104,8 @@ class LensConfig:
     executable_path: str | None = None
     language: str = "en"
     region: str = "US"
+    country: str = "US"
+    currency: str = "USD"
     user_agent: str | None = None
     extra_headers: dict[str, str] = field(default_factory=dict)
 
@@ -111,6 +113,11 @@ class LensConfig:
         # Normalize here so SessionManager always receives the Path it expects.
         if self.session_path is not None:
             self.session_path = Path(self.session_path).expanduser()
+
+        if self.country and self.country != "US" and self.region == "US":
+            self.region = self.country
+        elif self.region and self.region != "US" and self.country == "US":
+            self.country = self.region
 
         # Auto-detect real Chrome on macOS if available and requested
         if self.real_chrome and self.executable_path is None and os.path.exists(CHROME_MACOS_PATH):

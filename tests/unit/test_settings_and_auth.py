@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from google_lens_scraper.settings import (
+from google_lens_pro.settings import (
     get_gemini_api_key,
     load_config,
     save_config,
@@ -11,10 +11,10 @@ from google_lens_scraper.settings import (
 
 
 def test_settings_save_and_load(tmp_path, monkeypatch):
-    test_config_dir = tmp_path / ".config" / "google-lens-scraper"
+    test_config_dir = tmp_path / ".config" / "google-lens-pro"
     test_config_file = test_config_dir / "config.json"
-    monkeypatch.setattr("google_lens_scraper.settings.CONFIG_DIR", test_config_dir)
-    monkeypatch.setattr("google_lens_scraper.settings.CONFIG_FILE", test_config_file)
+    monkeypatch.setattr("google_lens_pro.settings.CONFIG_DIR", test_config_dir)
+    monkeypatch.setattr("google_lens_pro.settings.CONFIG_FILE", test_config_file)
 
     assert load_config() == {}
 
@@ -24,10 +24,10 @@ def test_settings_save_and_load(tmp_path, monkeypatch):
 
 
 def test_settings_gemini_key_resolution(tmp_path, monkeypatch):
-    test_config_dir = tmp_path / ".config" / "google-lens-scraper"
+    test_config_dir = tmp_path / ".config" / "google-lens-pro"
     test_config_file = test_config_dir / "config.json"
-    monkeypatch.setattr("google_lens_scraper.settings.CONFIG_DIR", test_config_dir)
-    monkeypatch.setattr("google_lens_scraper.settings.CONFIG_FILE", test_config_file)
+    monkeypatch.setattr("google_lens_pro.settings.CONFIG_DIR", test_config_dir)
+    monkeypatch.setattr("google_lens_pro.settings.CONFIG_FILE", test_config_file)
 
     # Empty
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)

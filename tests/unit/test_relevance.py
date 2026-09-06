@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from google_lens_scraper.models import (
+from google_lens_pro.models import (
     CommerceIntelligence,
     CommerceSummary,
     EnrichedCommerceMatch,
@@ -12,7 +12,7 @@ from google_lens_scraper.models import (
     ProductAttributes,
     VisualAnalysis,
 )
-from google_lens_scraper.relevance import (
+from google_lens_pro.relevance import (
     classify_match_relevance,
     is_noise_item,
     process_commerce_relevance,
@@ -312,7 +312,7 @@ def test_classify_furniture_agnostic():
 
 
 def test_process_commerce_relevance_with_ai_evaluations():
-    from google_lens_scraper.models import CandidateMatchEvaluation
+    from google_lens_pro.models import CandidateMatchEvaluation
 
     analysis = _make_analysis()
     analysis.match_evaluations = [

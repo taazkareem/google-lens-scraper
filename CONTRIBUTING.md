@@ -1,4 +1,4 @@
-# Contributing to Google Lens Scraper
+# Contributing to Google Lens Pro
 
 We welcome contributions! Please follow these guidelines to help keep the codebase clean and reliable.
 
@@ -6,8 +6,8 @@ We welcome contributions! Please follow these guidelines to help keep the codeba
 
 1. Clone the repository and navigate to the project directory:
    ```bash
-   git clone https://github.com/taazkareem/google-lens-scraper.git
-   cd google-lens-scraper
+   git clone https://github.com/taazkareem/google-lens-pro.git
+   cd google-lens-pro
    ```
 
 2. Create a virtual environment and install dependencies:
@@ -26,7 +26,7 @@ We welcome contributions! Please follow these guidelines to help keep the codeba
 
 4. Run type checking:
    ```bash
-   mypy src/google_lens_scraper
+   mypy src/google_lens_pro
    ```
 
 5. Run test suite:

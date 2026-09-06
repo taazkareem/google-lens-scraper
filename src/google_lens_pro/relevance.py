@@ -14,6 +14,7 @@ from .models import (
     KnowledgeGraph,
     MatchRelevance,
     PageType,
+    StockStatus,
     VisualAnalysis,
     VisualMatch,
 )
@@ -286,8 +287,12 @@ def recompute_market_summary(
     max_val = max(amounts)
     avg_val = round(sum(amounts) / len(amounts), 2)
 
-    # Best deal is lowest priced in active verified pool
-    best_item = min(active_pool, key=lambda item: item.price.amount if item.price else float("inf"))
+    # Best deal is lowest priced in active verified pool (preferring in-stock items)
+    in_stock_candidates = [
+        item for item in active_pool if item.stock_status != StockStatus.OUT_OF_STOCK
+    ]
+    candidate_pool = in_stock_candidates if in_stock_candidates else active_pool
+    best_item = min(candidate_pool, key=lambda item: item.price.amount if item.price else float("inf"))
     currency = (
         (best_item.price.currency if best_item.price else None)
         or original_summary.currency

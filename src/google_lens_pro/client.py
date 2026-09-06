@@ -2,7 +2,7 @@
 
 import io
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -42,6 +42,8 @@ from .parser import LensParser
 from .protobuf_engine import ProtobufEngine
 from .relevance import process_commerce_relevance
 from .settings import get_gemini_billing_tier
+
+ProgressCallback = Callable[[str], Any]
 
 
 class LensScraper:
@@ -158,8 +160,14 @@ class LensScraper:
             matches, kg = LensParser.parse_html(page.content())
         return matches, kg
 
-    def detect(self, query: str | Path | bytes) -> LensSearchResult:
+    def detect(
+        self,
+        query: str | Path | bytes,
+        on_progress: ProgressCallback | None = None,
+    ) -> LensSearchResult:
         """Fast-path only: extracts OCR text and object bounds via the Protobuf API without browser rendering."""
+        if on_progress:
+            on_progress("Extracting OCR text & objects via Google Lens Protobuf API...")
         image_bytes = self._resolve_to_bytes(query)
         proto_data = self.protobuf_engine.process_image_bytes_sync(image_bytes)
 
@@ -173,6 +181,85 @@ class LensScraper:
             knowledge_graph=None,
         )
 
+    def search_shopping(
+        self,
+        query: str,
+        country: str | None = None,
+        currency: str | None = None,
+        deep: bool = False,
+        max_results: int = 40,
+        on_progress: ProgressCallback | None = None,
+    ) -> Any:
+        """Searches Google Shopping directly for verified merchant offers and price comparisons."""
+        from .engines.shopping.engine import ShoppingEngine
+
+        engine = ShoppingEngine(config=self.config)
+        return engine.search(
+            query=query,
+            country=country,
+            currency=currency,
+            deep=deep,
+            max_results=max_results,
+            on_progress=on_progress,
+        )
+
+    def search_image(
+        self,
+        query: str | Path | bytes,
+        enrich: bool = True,
+        analyze: bool = True,
+        studio: bool = False,
+        studio_output: str | Path | None = None,
+        studio_prompt: str | None = None,
+        country: str | None = None,
+        currency: str | None = None,
+        on_progress: ProgressCallback | None = None,
+    ) -> LensSearchResult:
+        """Explicitly executes visual image search and shopping fusion."""
+        return self.search(
+            query=query,
+            enrich=enrich,
+            analyze=analyze,
+            studio=studio,
+            studio_output=studio_output,
+            studio_prompt=studio_prompt,
+            country=country,
+            currency=currency,
+            on_progress=on_progress,
+        )
+
+    def ocr(
+        self,
+        query: str | Path | bytes,
+        on_progress: ProgressCallback | None = None,
+    ) -> str | None:
+        """Sub-second OCR text extraction (zero-browser, fast-path Protobuf)."""
+        return self.detect(query, on_progress=on_progress).ocr_text
+
+    def fuse(
+        self,
+        query: str | Path | bytes,
+        country: str | None = None,
+        currency: str | None = None,
+        enable_shopping: bool = True,
+        on_progress: ProgressCallback | None = None,
+    ) -> LensSearchResult:
+        """Executes the complete Unified Fusion pipeline (Lens + Shopping + AI + Enrichment)."""
+        res = self.search(
+            query,
+            enrich=False,
+            analyze=False,
+            country=country,
+            currency=currency,
+            on_progress=on_progress,
+        )
+        return _pro.fuse(
+            res,
+            config=self.config,
+            enable_shopping=enable_shopping,
+            on_progress=on_progress,
+        )
+
     def search(
         self,
         query: str | Path | bytes,
@@ -181,21 +268,41 @@ class LensScraper:
         studio: bool = False,
         studio_output: str | Path | None = None,
         studio_prompt: str | None = None,
+        country: str | None = None,
+        currency: str | None = None,
+        deep: bool = False,
+        fuse: bool = False,
+        on_progress: ProgressCallback | None = None,
     ) -> LensSearchResult:
-        """Universal query dispatcher: accepts a Google URL, image URL, local file path, or bytes.
+        """Universal query dispatcher: accepts an image URL, local path, bytes, or text/UPC.
 
-        Args:
-            query: Public image URL, local image path, bytes, or Google Lens result URL.
-            enrich: If True, enriches visual matches with e-commerce pricing, clean canonical URLs,
-                   and merchant classification (requires Polar.sh license for full data; otherwise
-                   returns a 1-item teaser preview). Defaults to True.
-            analyze: If True, performs deep multimodal visual intelligence via Gemini 3.8 Flash
-                    when GEMINI_API_KEY is present. Defaults to True.
-            studio: If True, synthesizes an 8K commercial product packshot via Nano Banana Pro.
-            studio_output: File path to save generated 8K studio packshot.
-            studio_prompt: Custom prompt for studio packshot generation.
+        - If input is text/UPC: Scrapes verified merchant offers directly via Google Shopping.
+        - If input is an image: Performs visual discovery and executes Unified Fusion with Google Shopping.
         """
+
+        def _notify(msg: str) -> None:
+            if on_progress:
+                on_progress(msg)
+
         kind, value = classify_query(query)
+
+        # Smart text query dispatch: direct Google Shopping search
+        if kind == "text":
+            _notify(f"Searching Google Shopping for '{value}'...")
+            shop_res = self.search_shopping(
+                value,
+                country=country,
+                currency=currency,
+                deep=deep,
+                on_progress=on_progress,
+            )
+            return LensSearchResult(
+                query_url=None,
+                shopping=shop_res,
+                visual_matches=[],
+            )
+
+        _notify("Navigating Google Lens & extracting visual matches...")
         if kind == "bytes":
             res = self.search_bytes(value)
         elif kind == "google_url":
@@ -205,15 +312,13 @@ class LensScraper:
         else:
             res = self.search_file(value)
 
-        if enrich:
-            res = _pro.enrich(res)
-
         accumulator = UsageAccumulator(
             default_model="gemini-3.8-flash",
             billing_tier=get_gemini_billing_tier(),
         )
 
         if analyze:
+            _notify("Running Gemini 3.8 Flash multimodal analysis...")
             analyzer = VisualAnalyzer(accumulator=accumulator)
             res.analysis = analyzer.analyze(
                 image_input=query,
@@ -221,6 +326,14 @@ class LensScraper:
                 knowledge_graph=res.knowledge_graph,
                 ocr_text=res.ocr_text,
             )
+
+        if fuse:
+            _notify("Fusing Google Lens matches & Google Shopping offers...")
+            res = _pro.fuse(res, config=self.config, on_progress=on_progress)
+        elif enrich:
+            match_count = len(res.visual_matches)
+            _notify(f"Enriching merchant pricing & canonical URLs ({match_count} matches)...")
+            res = _pro.enrich(res, on_progress=on_progress)
 
         if res.commerce:
             res.commerce = process_commerce_relevance(
@@ -233,6 +346,7 @@ class LensScraper:
             res.analysis = res.analysis or res.commerce.analysis
 
         if studio:
+            _notify("Synthesizing 8K commercial product packshot...")
             synthesizer = StudioSynthesizer(accumulator=accumulator)
             if synthesizer.is_available:
                 res.studio_asset = synthesizer.generate(
@@ -247,6 +361,7 @@ class LensScraper:
                 res.commerce.cost = res.cost
 
         return res
+
 
     def upload_image(self, image_bytes: bytes) -> str:
         """Uploads image bytes to Google Lens ingestion and returns the generated search URL."""
@@ -434,3 +549,10 @@ class LensScraper:
         if query_str.startswith(("http://", "https://")):
             return self._fetch_image_bytes(query_str)
         raise LensConfigurationError(f"Cannot resolve '{query}' to image bytes.")
+
+
+# Canonical alias for the unified client
+GoogleLens = LensScraper
+
+__all__ = ["GoogleLens", "LensScraper", "ProgressCallback"]
+

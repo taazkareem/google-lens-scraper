@@ -1,12 +1,18 @@
-"""Exceptions hierarchy for google-lens-scraper."""
+"""SPDX-FileCopyrightText: © 2026 Talib Kareem <taazkareem@icloud.com>
+SPDX-License-Identifier: MIT
+
+Exceptions hierarchy for google-lens-pro.
+"""
+
+from __future__ import annotations
 
 
 class LensError(Exception):
-    """Base exception for all Google Lens Scraper errors."""
+    """Base exception for all Google Lens Scraper and Google Shopping errors."""
 
     def __init__(
         self, message: str, status_code: int | None = None, response_body: str | None = None
-    ):
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.status_code = status_code
@@ -36,3 +42,15 @@ class LensImageError(LensError):
 
 class LensConfigurationError(LensError):
     """Raised when configuration parameters or credentials are invalid."""
+
+
+class ShoppingError(LensError):
+    """Base exception for Google Shopping extraction errors."""
+
+
+class ShoppingParseError(ShoppingError):
+    """Raised when parsing Google Shopping search or product pages fails."""
+
+
+class ShoppingRateLimitError(ShoppingError):
+    """Raised when Google blocks Google Shopping requests."""

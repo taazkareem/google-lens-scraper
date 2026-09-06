@@ -2,7 +2,7 @@
 
 import pytest
 
-from google_lens_scraper.protobuf_engine import ProtobufEngine
+from google_lens_pro.protobuf_engine import ProtobufEngine
 
 
 @pytest.mark.asyncio

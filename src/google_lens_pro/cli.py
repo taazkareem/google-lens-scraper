@@ -18,10 +18,17 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import _pro
-from .client import LensScraper
+from ._query import classify_query
+from .client import GoogleLens, LensScraper
 from .config import LensConfig
 from .exceptions import LensError, LensRateLimitError
-from .models import EnrichedCommerceMatch, MatchRelevance
+from .models import (
+    EnrichedCommerceMatch,
+    LensSearchResult,
+    MatchRelevance,
+    ShoppingOffer,
+    ShoppingResult,
+)
 from .parser import PROG_NAME
 from .session import SessionManager
 
@@ -34,7 +41,7 @@ def _require_pro() -> None:
     if not _pro.AVAILABLE:
         raise click.ClickException(
             "Google Lens Pro engines are not part of the MIT source tree. "
-            "Install the published package instead: pip install google-lens-scraper"
+            "Install the published package instead: pip install google-lens-pro"
         )
 
 
@@ -47,7 +54,7 @@ def _build_commerce_table(title: str, items: list[EnrichedCommerceMatch]) -> Tab
     table.add_column("Title", style="bold white", min_width=20, max_width=32)
     table.add_column("Price", style="bold green", min_width=10, no_wrap=True)
     table.add_column("Merchant", style="cyan", min_width=10, max_width=16)
-    table.add_column("Clean URL", style="blue", min_width=18, max_width=40)
+    table.add_column("Clean URL", style="blue", min_width=20, overflow="fold")
 
     for item in items:
         price_str = (
@@ -67,6 +74,11 @@ def _build_commerce_table(title: str, items: list[EnrichedCommerceMatch]) -> Tab
 
         brand_str = item.brand if item.brand else "[dim]—[/dim]"
         merchant_str = item.merchant_name or "[dim]—[/dim]"
+        url_str = (
+            f"[link={item.direct_url}]{item.direct_url}[/link]"
+            if item.direct_url
+            else "[dim]—[/dim]"
+        )
 
         table.add_row(
             f"{item.match_score}%",
@@ -75,9 +87,222 @@ def _build_commerce_table(title: str, items: list[EnrichedCommerceMatch]) -> Tab
             item.title[:32],
             price_str,
             merchant_str,
-            item.direct_url[:40],
+            url_str,
         )
     return table
+
+
+def _build_shopping_table(title: str, offers: list[ShoppingOffer]) -> Table:
+    """Builds a rich table of verified Google Shopping merchant listings."""
+    table = Table(title=title)
+    table.add_column("Rank", style="dim", justify="right", width=5)
+    table.add_column("Store / Seller", style="bold cyan", min_width=12, max_width=20)
+    table.add_column("Title", style="bold white", min_width=20, max_width=36)
+    table.add_column("Price", style="bold green", min_width=10, no_wrap=True)
+    table.add_column("Shipping", style="dim green", min_width=10)
+    table.add_column("Rating", style="yellow", min_width=8)
+    table.add_column("Direct Store Link", style="blue", min_width=20, overflow="fold")
+
+    for idx, offer in enumerate(offers, 1):
+        price_str = (
+            f"{offer.price.amount:.2f} {offer.price.currency}"
+            if offer.price
+            else "[dim]—[/dim]"
+        )
+        ship_str = offer.shipping_info or "[dim]Standard[/dim]"
+        rating_str = f"★ {offer.rating:.1f}" if offer.rating else "[dim]—[/dim]"
+        if offer.review_count:
+            rating_str += f" ({offer.review_count})"
+        url_str = (
+            f"[link={offer.direct_url}]{offer.direct_url}[/link]"
+            if offer.direct_url
+            else "[dim]—[/dim]"
+        )
+
+        table.add_row(
+            str(idx),
+            offer.merchant_name or "Store",
+            offer.title[:36],
+            price_str,
+            ship_str,
+            rating_str,
+            url_str,
+        )
+    return table
+
+
+def _build_shopping_panel(result: ShoppingResult) -> Panel:
+    """Builds an executive market valuation panel for Google Shopping results."""
+    grid = Table.grid(padding=(0, 3), expand=True)
+    grid.add_column(ratio=1)
+    grid.add_column(ratio=1)
+
+    left = Table.grid(padding=(0, 1))
+    left.add_column(style="bold cyan", no_wrap=True)
+    left.add_column(style="white")
+    left.add_row("Product Query:", f"[bold white]{result.query}[/bold white]")
+    left.add_row("Offers Detected:", f"[bold green]{result.total_offers}[/bold green]")
+    curr = result.currency or "USD"
+    if result.min_price is not None and result.max_price is not None:
+        left.add_row(
+            "Price Range:",
+            f"[green]{result.min_price:.2f} – {result.max_price:.2f} {curr}[/green]",
+        )
+    if result.avg_price is not None:
+        left.add_row("Average Price:", f"[bold]{result.avg_price:.2f} {curr}[/bold]")
+
+    right = Table.grid(padding=(0, 1))
+    right.add_column(style="bold yellow", no_wrap=True)
+    right.add_column(style="white")
+    if result.best_deal and result.best_deal.price:
+        deal = result.best_deal
+        right.add_row(
+            "🏆 Best Deal:",
+            f"[bold green]{deal.price.amount:.2f} {deal.price.currency}[/bold green]",
+        )
+        right.add_row("Best Seller:", f"[bold cyan]{deal.merchant_name}[/bold cyan]")
+        if deal.shipping_info:
+            right.add_row("Shipping:", f"[dim]{deal.shipping_info}[/dim]")
+        if deal.direct_url:
+            right.add_row("Direct Link:", f"[link={deal.direct_url}]{deal.direct_url}[/link]")
+
+    grid.add_row(left, right)
+    return Panel(
+        grid,
+        title=f"🛒 Google Shopping Market Intelligence: {result.query}",
+        border_style="green",
+    )
+
+
+def _build_executive_panel(results: LensSearchResult) -> Panel:
+    """Builds a unified Executive Product Intelligence & Market Valuation card."""
+    c = results.commerce
+    s = c.summary if c else None
+    a = results.analysis
+    attrs = a.attributes if a else None
+
+    grid = Table.grid(padding=(0, 3), expand=True)
+    grid.add_column(ratio=1)
+    grid.add_column(ratio=1)
+
+    left = Table.grid(padding=(0, 1))
+    left.add_column(style="bold cyan", no_wrap=True)
+    left.add_column(style="white")
+
+    if attrs:
+        if attrs.brand:
+            left.add_row("Brand:", attrs.brand)
+        if attrs.model_or_name:
+            left.add_row("Model / Silhouette:", attrs.model_or_name)
+        if attrs.category:
+            left.add_row("Category:", attrs.category)
+        if attrs.color:
+            left.add_row("Colorway:", attrs.color)
+        if attrs.condition_assessment:
+            left.add_row("Condition:", attrs.condition_assessment)
+        if attrs.estimated_msrp_usd is not None:
+            conf_str = (
+                f" [dim]({attrs.confidence_score * 100:.0f}% conf)[/dim]"
+                if attrs.confidence_score
+                else ""
+            )
+            left.add_row("Est. MSRP:", f"${attrs.estimated_msrp_usd:,.2f} USD{conf_str}")
+        elif attrs.confidence_score:
+            left.add_row("Confidence:", f"{attrs.confidence_score * 100:.0f}%")
+        if attrs.materials:
+            left.add_row("Materials:", ", ".join(attrs.materials))
+        if results.ocr_text:
+            clean_ocr = " ".join(results.ocr_text.split())
+            if len(clean_ocr) > 35:
+                clean_ocr = clean_ocr[:32] + "..."
+            if clean_ocr.lower() not in (attrs.brand or "").lower():
+                left.add_row("OCR Text:", f'[dim]"{clean_ocr}"[/dim]')
+    else:
+        target_name = (
+            (s.target_product if s else None)
+            or (
+                results.knowledge_graph.title
+                if (
+                    results.knowledge_graph
+                    and results.knowledge_graph.title
+                    and results.knowledge_graph.title.lower()
+                    not in ("search results", "visual matches")
+                )
+                else None
+            )
+            or "Visual Search Target"
+        )
+        left.add_row("Target Product:", f"[bold yellow]{target_name}[/bold yellow]")
+        if results.knowledge_graph and results.knowledge_graph.subtitle:
+            left.add_row("Entity Category:", results.knowledge_graph.subtitle)
+        if results.ocr_text:
+            clean_ocr = " ".join(results.ocr_text.split())
+            if len(clean_ocr) > 40:
+                clean_ocr = clean_ocr[:37] + "..."
+            left.add_row("Detected Text:", f'[dim]"{clean_ocr}"[/dim]')
+
+    right = Table.grid(padding=(0, 1))
+    right.add_column(style="bold green", no_wrap=True)
+    right.add_column(style="white", overflow="fold")
+
+    if s:
+        priced_suffix = f" ({s.total_priced_matches} priced)" if s.total_priced_matches else ""
+        right.add_row("Listings Analyzed:", f"{s.total_matches}{priced_suffix}")
+        if s.min_price is not None and s.max_price is not None:
+            if s.min_price == s.max_price:
+                range_str = f"{s.min_price:.2f} {s.currency}"
+            else:
+                range_str = f"{s.min_price:.2f} – {s.max_price:.2f} {s.currency}"
+            right.add_row("Market Price Range:", range_str)
+        if s.avg_price is not None:
+            right.add_row("Average Market Price:", f"{s.avg_price:.2f} {s.currency}")
+        if s.best_deal:
+            deal_amt = (
+                f"{s.best_deal.price.amount:.2f} {s.currency}" if s.best_deal.price else "N/A"
+            )
+            merchant = s.best_deal.merchant_name or "Direct"
+            right.add_row(
+                "🏆 Best Deal Seller:", f"[bold yellow]{merchant}[/bold yellow] ({deal_amt})"
+            )
+            if s.best_deal.direct_url:
+                right.add_row(
+                    "",
+                    f"[link={s.best_deal.direct_url}][blue]{s.best_deal.direct_url}[/blue][/link]",
+                )
+    elif results.visual_matches:
+        right.add_row("Visual Matches:", f"{len(results.visual_matches)} matches found")
+
+    grid.add_row(left, right)
+
+    content = Table.grid()
+    content.add_column()
+    if a and a.summary:
+        content.add_row(f"[italic]{a.summary}[/italic]\n")
+    content.add_row(grid)
+
+    if a:
+        if a.resale_recommendation:
+            content.add_row(
+                f"\n[bold yellow]Resale Outlook:[/bold yellow] [dim]{a.resale_recommendation}[/dim]"
+            )
+        if attrs and attrs.key_features:
+            features_str = " • ".join(attrs.key_features)
+            content.add_row(f"[dim]Key Features: {features_str}[/dim]")
+        if attrs and attrs.authenticity_markers:
+            markers_str = " • ".join(attrs.authenticity_markers)
+            content.add_row(f"[dim]Authenticity Markers: {markers_str}[/dim]")
+        if a.tags:
+            tag_str = " ".join(f"#{t.strip().replace(' ', '')}" for t in a.tags[:8])
+            content.add_row(f"[dim]Tags: {tag_str}[/dim]")
+
+    panel_title = (
+        "✨ Google Lens Pro — Product Intelligence & Market Valuation"
+        if (c and not c.is_preview)
+        else "🧠 Multimodal Visual & Market Intelligence"
+    )
+    return Panel(
+        content, title=f"[bold cyan]{panel_title}[/bold cyan]", border_style="cyan"
+    )
 
 
 class DefaultGroup(click.Group):
@@ -98,8 +323,10 @@ class DefaultGroup(click.Group):
         if cmd_name in self.commands or cmd_name in ("-h", "--help"):
             return super().resolve_command(ctx, args)
 
-        # Otherwise, assume it's the image QUERY argument for 'search'
-        return "search", self.get_command(ctx, "search"), args
+        # Otherwise, assume it's a direct query: route text to 'shop' and images/files to 'search'
+        kind, _ = classify_query(cmd_name)
+        target = "shop" if kind == "text" else "search"
+        return target, self.get_command(ctx, target), args
 
 
 @click.group(cls=DefaultGroup, invoke_without_command=True)
@@ -265,6 +492,143 @@ def export_cmd(base64_only: bool, write_env: bool) -> None:
 cli.add_command(export_cmd, name="export")
 
 
+@cli.command(name="shop")
+@click.argument("query", required=True)
+@click.option("--country", default="US", help="Target country code (e.g. US, UK, CA, DE, FR)")
+@click.option("--currency", default="USD", help="Target currency code (e.g. USD, EUR, GBP, CAD)")
+@click.option(
+    "--deep", is_flag=True, help="Deep scrape multi-seller comparison tables (/shopping/product/...)"
+)
+@click.option("--max-results", default=40, help="Maximum offers to extract (default: 40)")
+@click.option("--json", "--json-output", "json_output", is_flag=True, help="Output formatted JSON to stdout")
+@click.option(
+    "--export-csv",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Save offers to CSV file",
+)
+@click.option(
+    "--export-json",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Save offers to JSON file",
+)
+@click.option(
+    "--headless/--no-headless",
+    default=True,
+    help="Run browser in headless mode if challenge occurs",
+)
+@click.option("-p", "--proxy", help="HTTP or SOCKS5 proxy URL")
+@click.option("--timeout", default=30.0, help="Request timeout in seconds")
+def shop_cmd(
+    query: str,
+    country: str,
+    currency: str,
+    deep: bool,
+    max_results: int,
+    json_output: bool,
+    export_csv: str | None,
+    export_json: str | None,
+    headless: bool,
+    proxy: str | None,
+    timeout: float,
+) -> None:
+    """Search Google Shopping directly for verified merchant prices, stock, and store links.
+
+    QUERY can be a product title, model, brand, or barcode/UPC.
+    """
+    config = LensConfig(
+        headless=headless,
+        timeout=timeout,
+        proxy=proxy,
+        country=country,
+        currency=currency,
+    )
+    from .engines.shopping.engine import ShoppingEngine
+
+    engine = ShoppingEngine(config=config)
+
+    if not json_output and stderr_console.is_terminal:
+        with stderr_console.status(
+            f"[bold cyan]Searching Google Shopping for '{query}'...[/bold cyan]",
+            spinner="dots",
+        ) as status:
+
+            def _update_status(msg: str) -> None:
+                status.update(f"[bold cyan]{msg}[/bold cyan]")
+
+            results = engine.search(
+                query=query,
+                country=country,
+                currency=currency,
+                deep=deep,
+                max_results=max_results,
+                on_progress=_update_status,
+            )
+    else:
+        results = engine.search(
+            query=query,
+            country=country,
+            currency=currency,
+            deep=deep,
+            max_results=max_results,
+        )
+
+    if json_output:
+        click.echo(results.to_json())
+        return
+
+    console.print(_build_shopping_panel(results))
+    if results.offers:
+        console.print(
+            _build_shopping_table(
+                f"Verified Google Shopping Store Offers ({len(results.offers)})", results.offers
+            )
+        )
+
+    if export_json:
+        p = Path(export_json).resolve()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(results.to_json(), encoding="utf-8")
+        console.print(f"[bold green]✓ Exported Google Shopping results to:[/bold green] {p}")
+
+    if export_csv:
+        p = Path(export_csv).resolve()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        import csv
+
+        with p.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "Rank",
+                    "Store",
+                    "Title",
+                    "Price",
+                    "Currency",
+                    "Shipping",
+                    "Rating",
+                    "Review Count",
+                    "Condition",
+                    "Direct URL",
+                ]
+            )
+            for idx, o in enumerate(results.offers, 1):
+                writer.writerow(
+                    [
+                        idx,
+                        o.merchant_name,
+                        o.title,
+                        o.price.amount if o.price else "",
+                        o.price.currency if o.price else "",
+                        o.shipping_info or "",
+                        o.rating or "",
+                        o.review_count or "",
+                        o.condition.value if o.condition else "",
+                        o.direct_url,
+                    ]
+                )
+        console.print(f"[bold green]✓ Exported Google Shopping CSV to:[/bold green] {p}")
+
+
 @cli.command(name="search")
 @click.argument("query", required=True)
 @click.option(
@@ -323,8 +687,13 @@ cli.add_command(export_cmd, name="export")
 @click.option(
     "--cdp-url", help="Connect to an existing Chrome browser over CDP (e.g. http://localhost:9222)"
 )
+@click.option("--country", default="US", help="Target country code for localization (e.g. US, UK, CA, DE, FR)")
+@click.option("--currency", default="USD", help="Target currency code (e.g. USD, EUR, GBP, CAD)")
+@click.option("--deep", is_flag=True, help="Deep scrape multi-seller comparative product tables")
 @click.option("--timeout", default=30.0, help="Request timeout in seconds")
+@click.pass_context
 def search_cmd(
+    ctx: click.Context,
     query: str,
     output: str | None,
     json_output: bool,
@@ -341,12 +710,35 @@ def search_cmd(
     proxy: str | None,
     profile_dir: str | None,
     cdp_url: str | None,
+    country: str,
+    currency: str,
+    deep: bool,
     timeout: float,
 ) -> None:
     """Search Google Lens for visual matches, OCR text, and entities.
 
-    QUERY can be a public image URL, local image file path, or a Google Lens search URL.
+    QUERY can be a public image URL, local image file path, Google Lens search URL, or text query.
     """
+    # Smart text query routing: if input is a text string / product title, forward to Google Shopping
+    kind, value = classify_query(query)
+    if kind == "text":
+        if not json_output:
+            console.print(f"[bold cyan]Routing text query to Google Shopping:[/bold cyan] {query}")
+        return ctx.invoke(
+            shop_cmd,
+            query=query,
+            country=country,
+            currency=currency,
+            deep=deep,
+            max_results=40,
+            json_output=json_output,
+            export_csv=export_csv,
+            export_json=export_json,
+            headless=headless,
+            proxy=proxy,
+            timeout=timeout,
+        )
+
     config = LensConfig(
         headless=headless,
         timeout=timeout,
@@ -354,6 +746,8 @@ def search_cmd(
         proxy=proxy,
         user_data_dir=profile_dir,
         cdp_url=cdp_url,
+        country=country,
+        currency=currency,
     )
 
     scraper = LensScraper(config=config)
@@ -397,76 +791,66 @@ def search_cmd(
                     )
 
     try:
-        results = (
-            scraper.detect(query)
-            if ocr_only
-            else scraper.search(
-                query,
-                enrich=enrich,
-                analyze=analyze,
-                studio=studio,
-                studio_output=studio_output,
-                studio_prompt=studio_prompt,
+        if not json_output and stderr_console.is_terminal:
+            with stderr_console.status(
+                "[bold cyan]Connecting to Google Lens...[/bold cyan]",
+                spinner="dots",
+            ) as status:
+
+                def _update_status(msg: str) -> None:
+                    status.update(f"[bold cyan]{msg}[/bold cyan]")
+
+                results = (
+                    scraper.detect(query, on_progress=_update_status)
+                    if ocr_only
+                    else scraper.search(
+                        query,
+                        enrich=enrich,
+                        analyze=analyze,
+                        studio=studio,
+                        studio_output=studio_output,
+                        studio_prompt=studio_prompt,
+                        on_progress=_update_status,
+                    )
+                )
+        else:
+            results = (
+                scraper.detect(query)
+                if ocr_only
+                else scraper.search(
+                    query,
+                    enrich=enrich,
+                    analyze=analyze,
+                    studio=studio,
+                    studio_output=studio_output,
+                    studio_prompt=studio_prompt,
+                )
             )
-        )
 
         if json_output:
             click.echo(results.to_json())
             return
 
-        # Display OCR text if present
-        if results.ocr_text:
-            console.print("\n[bold green]Detected OCR Text:[/bold green]")
-            console.print(f"[dim]{results.ocr_text}[/dim]")
+        # 1. Fast-path OCR and object detection mode
+        if ocr_only:
+            if results.ocr_text:
+                console.print("\n[bold green]Detected OCR Text:[/bold green]")
+                console.print(f"[dim]{results.ocr_text}[/dim]")
 
-        # Display Detected Objects
-        if results.detected_objects:
-            console.print(
-                f"\n[bold green]Detected Objects/Regions:[/bold green] {len(results.detected_objects)}"
-            )
-            for obj in results.detected_objects:
-                bounds = (
-                    f"cx={obj.bounding_box.center_x:.2f}, cy={obj.bounding_box.center_y:.2f}"
-                    if obj.bounding_box
-                    else "N/A"
-                )
-                console.print(f"  • [cyan]{obj.id}[/cyan] ({bounds})")
-
-        # Display Knowledge Graph if present
-        if results.knowledge_graph and results.knowledge_graph.title:
-            console.print(
-                f"\n[bold yellow]Identified Entity:[/bold yellow] {results.knowledge_graph.title}"
-            )
-
-        # Display Visual Matches Table if in full mode
-        if not ocr_only:
-            matches = results.visual_matches
-            console.print(f"\n[bold green]Visual Matches Found:[/bold green] {len(matches)}")
-
-            if matches:
-                table = Table(title="Google Lens Visual Matches")
-                table.add_column("#", style="cyan", width=4)
-                table.add_column("Title", style="bold white", max_width=40)
-                table.add_column("Source", style="green", width=16)
-                table.add_column("Price", style="yellow", width=10)
-                table.add_column("Destination URL", style="blue", max_width=50)
-
-                for idx, item in enumerate(matches[:20], 1):
-                    table.add_row(
-                        str(idx),
-                        item.title[:40],
-                        (item.source or "")[:16],
-                        item.price or "",
-                        item.link[:50],
-                    )
-
-                console.print(table)
-            else:
+            if results.detected_objects:
                 console.print(
-                    "[yellow]No external visual matches found on this search result page.[/yellow]"
+                    f"\n[bold green]Detected Objects/Regions:[/bold green] {len(results.detected_objects)}"
                 )
+                for obj in results.detected_objects:
+                    bounds = (
+                        f"cx={obj.bounding_box.center_x:.2f}, cy={obj.bounding_box.center_y:.2f}"
+                        if obj.bounding_box
+                        else "N/A"
+                    )
+                    console.print(f"  • [cyan]{obj.id}[/cyan] ({bounds})")
+            return
 
-        # Display Pro Commerce Intelligence if requested
+        # 2. Pro Commerce Intelligence Mode (when enrich is active and commerce data exists)
         if enrich and results.commerce:
             c = results.commerce
             if c.is_preview:
@@ -479,7 +863,6 @@ def search_cmd(
                             "Deep Enriched Listing Preview (1-Item Teaser)", c.items[:1]
                         )
                     )
-
                 if c.upgrade_message:
                     console.print(
                         Panel(
@@ -489,37 +872,10 @@ def search_cmd(
                         )
                     )
             else:
-                # Full Pro Output
-                s = c.summary
-                console.print(
-                    "\n[bold magenta]✨ Google Lens Pro — Resale & Pricing Intelligence[/bold magenta]"
-                )
-                title_suffix = f": {s.target_product}" if s.target_product else ""
-                sum_table = Table(
-                    title=f"Market Pricing Analytics (Verified Listings{title_suffix})"
-                )
-                sum_table.add_column("Metric", style="bold cyan")
-                sum_table.add_column("Value", style="bold white")
-                if s.target_product:
-                    sum_table.add_row(
-                        "Identified Target Product",
-                        f"[bold yellow]{s.target_product}[/bold yellow]",
-                    )
-                sum_table.add_row("Total Analyzed Listings", str(s.total_matches))
-                sum_table.add_row("Verified Priced Listings", str(s.total_priced_matches))
-                if s.min_price is not None:
-                    sum_table.add_row("Lowest Market Price", f"{s.min_price:.2f} {s.currency}")
-                if s.max_price is not None:
-                    sum_table.add_row("Highest Market Price", f"{s.max_price:.2f} {s.currency}")
-                if s.avg_price is not None:
-                    sum_table.add_row("Average Market Price", f"{s.avg_price:.2f} {s.currency}")
-                if s.best_deal:
-                    sum_table.add_row(
-                        "🏆 Best Deal Seller",
-                        f"{s.best_deal.merchant_name} ({s.best_deal.price.amount if s.best_deal.price else 'N/A'} {s.currency})\n[blue]{s.best_deal.direct_url}[/blue]",
-                    )
-                console.print(sum_table)
+                # Render the unified Executive Product Intelligence & Market Valuation card
+                console.print(_build_executive_panel(results))
 
+                # Render verified commercial listings
                 if c.items:
                     # Deduplicate products by direct_url to eliminate redundant listing rows
                     seen_urls: set[str] = set()
@@ -529,7 +885,7 @@ def search_cmd(
                             seen_urls.add(p.direct_url)
                             unique_products.append(p)
 
-                    # Display only verified products with detected pricing
+                    # Display verified products with detected pricing
                     display_items = [p for p in unique_products if p.price is not None]
                     if not display_items:
                         # Fallback to unique product candidates or top items if no pricing was detected
@@ -574,53 +930,63 @@ def search_cmd(
                         f"[bold green]✓ Exported all {len(c.items)} structured commerce listings to:[/bold green] {json_path}"
                     )
 
-        elif not enrich and not json_output:
-            console.print(
-                "[dim]💡 Pro tip: Pass '--enrich' to unlock canonical product links, normalized price comparisons, and best-deal ranking.[/dim]"
-            )
+        else:
+            # 3. Standard / Un-enriched Search Mode
+            if results.analysis:
+                console.print(_build_executive_panel(results))
+            else:
+                if results.ocr_text:
+                    console.print("\n[bold green]Detected OCR Text:[/bold green]")
+                    console.print(f"[dim]{results.ocr_text}[/dim]")
 
-        # Display Deep Multimodal Product Intelligence
-        if results.analysis:
-            a = results.analysis
-            console.print(
-                "\n[bold cyan]🧠 Gemini 3.8 Flash — Multimodal Visual Intelligence[/bold cyan]"
-            )
-            if a.summary:
-                console.print(f"[italic]{a.summary}[/italic]\n")
+                if results.detected_objects:
+                    console.print(
+                        f"\n[bold green]Detected Objects/Regions:[/bold green] {len(results.detected_objects)}"
+                    )
+                    for obj in results.detected_objects:
+                        bounds = (
+                            f"cx={obj.bounding_box.center_x:.2f}, cy={obj.bounding_box.center_y:.2f}"
+                            if obj.bounding_box
+                            else "N/A"
+                        )
+                        console.print(f"  • [cyan]{obj.id}[/cyan] ({bounds})")
 
-            attr_table = Table(title="Identified Product Attributes")
-            attr_table.add_column("Attribute", style="bold cyan", width=22)
-            attr_table.add_column("Value", style="bold white")
+                if results.knowledge_graph and results.knowledge_graph.title:
+                    console.print(
+                        f"\n[bold yellow]Identified Entity:[/bold yellow] {results.knowledge_graph.title}"
+                    )
 
-            attrs = a.attributes
-            if attrs.brand:
-                attr_table.add_row("Brand", attrs.brand)
-            if attrs.model_or_name:
-                attr_table.add_row("Model / Silhouette", attrs.model_or_name)
-            if attrs.category:
-                attr_table.add_row("Category", attrs.category)
-            if attrs.color:
-                attr_table.add_row("Colorway", attrs.color)
-            if attrs.materials:
-                attr_table.add_row("Materials", ", ".join(attrs.materials))
-            if attrs.condition_assessment:
-                attr_table.add_row("Condition Assessment", attrs.condition_assessment)
-            if attrs.key_features:
-                attr_table.add_row("Key Features", " • ".join(attrs.key_features))
-            if attrs.authenticity_markers:
-                attr_table.add_row("Authenticity Markers", " • ".join(attrs.authenticity_markers))
-            if attrs.estimated_msrp_usd is not None:
-                attr_table.add_row("Estimated MSRP", f"${attrs.estimated_msrp_usd:,.2f} USD")
-            attr_table.add_row("Confidence", f"{attrs.confidence_score * 100:.1f}%")
+            matches = results.visual_matches
+            console.print(f"\n[bold green]Visual Matches Found:[/bold green] {len(matches)}")
 
-            console.print(attr_table)
+            if matches:
+                table = Table(title="Google Lens Visual Matches")
+                table.add_column("#", style="cyan", width=4)
+                table.add_column("Title", style="bold white", max_width=40)
+                table.add_column("Source", style="green", width=16)
+                table.add_column("Price", style="yellow", width=10)
+                table.add_column("Destination URL", style="blue", overflow="fold")
 
-            if a.resale_recommendation:
+                for idx, item in enumerate(matches[:20], 1):
+                    link_str = f"[link={item.link}]{item.link}[/link]" if item.link else ""
+                    table.add_row(
+                        str(idx),
+                        item.title[:40],
+                        (item.source or "")[:16],
+                        item.price or "",
+                        link_str,
+                    )
+
+                console.print(table)
+            else:
                 console.print(
-                    f"\n[bold yellow]Resale Outlook:[/bold yellow] {a.resale_recommendation}"
+                    "[yellow]No external visual matches found on this search result page.[/yellow]"
                 )
-            if a.tags:
-                console.print(f"[dim]Tags: {', '.join(a.tags)}[/dim]")
+
+            if not enrich:
+                console.print(
+                    "[dim]💡 Pro tip: Pass '--enrich' to unlock canonical product links, normalized price comparisons, and best-deal ranking.[/dim]"
+                )
 
         # Display Nano Banana Pro Synthesized Studio Packshot
         if results.studio_asset:
@@ -694,13 +1060,14 @@ def search_cmd(
 def get_skill_source_path() -> Path:
     """Locates the bundled Google Lens Agent Skill source directory."""
     # 1. Try importlib.resources
-    try:
-        ref = pkg_resources.files("google_lens_scraper").joinpath("data", "skill", "google-lens")
-        p = Path(str(ref))
-        if p.exists() and (p / "SKILL.md").exists():
-            return p
-    except Exception:
-        pass
+    for pkg in ("google_lens_pro",):
+        try:
+            ref = pkg_resources.files(pkg).joinpath("data", "skill", "google-lens")
+            p = Path(str(ref))
+            if p.exists() and (p / "SKILL.md").exists():
+                return p
+        except Exception:
+            pass
 
     # 2. Local package directory relative to this file
     pkg_dir = Path(__file__).resolve().parent

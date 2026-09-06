@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "google-lens-scraper"
-version = "0.1.4"
-description = "High-performance Google Lens reverse image search, visual match scraper, and OCR extraction engine for Python."
+name = "google-lens-pro"
+version = "0.2.0"
+description = "High-performance Google Lens visual search, OCR, Gemini multimodal AI, and commercial product intelligence engine for Python."
 readme = "README.md"
 license = "MIT AND LicenseRef-Proprietary"
 requires-python = ">=3.10"
@@ -14,7 +14,10 @@ authors = [
 ]
 keywords = [
     "google-lens",
+    "google-lens-pro",
     "google-lens-api",
+    "google-shopping",
+    "product-intelligence",
     "reverse-image-search",
     "visual-search",
     "image-search",
@@ -83,22 +86,22 @@ dev = [
 ]
 
 [project.scripts]
-google-lens = "google_lens_scraper.cli:main"
-google-lens-scraper = "google_lens_scraper.cli:main"
-google-lens-pro = "google_lens_scraper.cli:main"
+lens = "google_lens_pro.cli:main"
+google-lens = "google_lens_pro.cli:main"
+google-lens-pro = "google_lens_pro.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/taazkareem/google-lens-scraper"
-Documentation = "https://github.com/taazkareem/google-lens-scraper#readme"
-Repository = "https://github.com/taazkareem/google-lens-scraper.git"
-Issues = "https://github.com/taazkareem/google-lens-scraper/issues"
-Changelog = "https://github.com/taazkareem/google-lens-scraper/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/taazkareem/google-lens-pro"
+Documentation = "https://github.com/taazkareem/google-lens-pro#readme"
+Repository = "https://github.com/taazkareem/google-lens-pro.git"
+Issues = "https://github.com/taazkareem/google-lens-pro/issues"
+Changelog = "https://github.com/taazkareem/google-lens-pro/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/google_lens_scraper"]
+packages = ["src/google_lens_pro"]
 
 [tool.hatch.build.targets.wheel.force-include]
-".agents/skills/google-lens" = "google_lens_scraper/data/skill/google-lens"
+".agents/skills/google-lens" = "google_lens_pro/data/skill/google-lens"
 
 # Compile the proprietary Pro engines to native C extensions (no shipped .py source).
 # Opt-in: set HATCH_BUILD_HOOK_ENABLE_MYPYC=1 (CI wheels). Plain installs stay pure Python.
@@ -106,8 +109,9 @@ packages = ["src/google_lens_scraper"]
 enable-by-default = false
 dependencies = ["hatch-mypyc>=0.16.0", "mypy>=1.10.0"]
 include = [
-    "src/google_lens_scraper/license.py",
-    "src/google_lens_scraper/commerce.py",
+    "src/google_lens_pro/license.py",
+    "src/google_lens_pro/core/license.py",
+    "src/google_lens_pro/commerce/",
 ]
 mypy-args = ["--ignore-missing-imports"]
 options = { debug_level = "0" }
@@ -163,7 +167,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["google_lens_scraper"]
+known-first-party = ["google_lens_pro"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-from google_lens_scraper import PRO_AVAILABLE
-from google_lens_scraper.ai_analyzer import VisualAnalyzer
-from google_lens_scraper.ai_studio import StudioSynthesizer
-from google_lens_scraper.gemini_cost_calculator import UsageAccumulator, calculate_cost
-from google_lens_scraper.models import (
+from google_lens_pro import PRO_AVAILABLE
+from google_lens_pro.ai_analyzer import VisualAnalyzer
+from google_lens_pro.ai_studio import StudioSynthesizer
+from google_lens_pro.gemini_cost_calculator import UsageAccumulator, calculate_cost
+from google_lens_pro.models import (
     GeneratedStudioAsset,
     LensSearchResult,
     ProductAttributes,
@@ -36,14 +36,14 @@ def _create_sample_image_bytes() -> bytes:
 class TestVisualAnalyzer:
     def test_analyzer_not_available_without_api_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        monkeypatch.setattr("google_lens_scraper.ai_analyzer.get_gemini_api_key", lambda: None)
+        monkeypatch.setattr("google_lens_pro.ai_analyzer.get_gemini_api_key", lambda: None)
         analyzer = VisualAnalyzer(api_key=None)
         assert not analyzer.is_available
         assert analyzer.analyze(_create_sample_image()) is None
 
     def test_analyzer_zero_key_native_deduction(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        monkeypatch.setattr("google_lens_scraper.ai_analyzer.get_gemini_api_key", lambda: None)
+        monkeypatch.setattr("google_lens_pro.ai_analyzer.get_gemini_api_key", lambda: None)
         analyzer = VisualAnalyzer(api_key=None)
         assert not analyzer.is_available
         matches = [VisualMatch(title="Nike Free RN Flyknit 2017 - 880843 006 | GOAT", price="$120")]
@@ -110,11 +110,16 @@ class TestVisualAnalyzer:
             assert rec.prompt_tokens == 500
             assert rec.output_tokens == 200
 
+            call_kwargs = mock_client.models.generate_content.call_args.kwargs
+            config_arg = call_kwargs.get("config")
+            assert config_arg is not None
+            assert config_arg.automatic_function_calling.disable is True
+
 
 class TestStudioSynthesizer:
     def test_synthesizer_not_available_without_api_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        monkeypatch.setattr("google_lens_scraper.ai_studio.get_gemini_api_key", lambda: None)
+        monkeypatch.setattr("google_lens_pro.ai_studio.get_gemini_api_key", lambda: None)
         synthesizer = StudioSynthesizer(api_key=None)
         assert not synthesizer.is_available
         assert synthesizer.generate(_create_sample_image()) is None
@@ -158,6 +163,11 @@ class TestStudioSynthesizer:
             assert asset.prompt_used == "8K packshot"
             assert len(accumulator.get_records()) == 1
 
+            call_kwargs = mock_client.models.generate_content.call_args.kwargs
+            config_arg = call_kwargs.get("config")
+            assert config_arg is not None
+            assert config_arg.automatic_function_calling.disable is True
+
 
 class TestCostCalculatorIntegration:
     def test_gemini_3_8_flash_pricing(self):
@@ -196,7 +206,7 @@ class TestCostCalculatorIntegration:
 class TestClientAIIntegration:
     @pro_only
     def test_client_search_with_ai_features(self, tmp_path, monkeypatch):
-        from google_lens_scraper.client import LensScraper
+        from google_lens_pro.client import LensScraper
 
         monkeypatch.setenv("GEMINI_API_KEY", "test-key")
 
@@ -223,14 +233,14 @@ class TestClientAIIntegration:
         with (
             patch.object(scraper, "search_file", return_value=raw_result),
             patch(
-                "google_lens_scraper.ai_analyzer.VisualAnalyzer.analyze",
+                "google_lens_pro.ai_analyzer.VisualAnalyzer.analyze",
                 return_value=sample_analysis,
             ),
             patch(
-                "google_lens_scraper.ai_studio.StudioSynthesizer.generate",
+                "google_lens_pro.ai_studio.StudioSynthesizer.generate",
                 return_value=sample_asset,
             ),
-            patch("google_lens_scraper._pro.license_manager.validate") as mock_val,
+            patch("google_lens_pro._pro.license_manager.validate") as mock_val,
         ):
             mock_val.return_value.is_valid = True
             res = scraper.search(
@@ -249,7 +259,7 @@ class TestClientAIIntegration:
     @pytest.mark.asyncio
     @pro_only
     async def test_async_client_search_with_ai_features(self, tmp_path, monkeypatch):
-        from google_lens_scraper.async_client import AsyncLensScraper
+        from google_lens_pro.async_client import AsyncLensScraper
 
         monkeypatch.setenv("GEMINI_API_KEY", "test-key")
 
@@ -270,10 +280,10 @@ class TestClientAIIntegration:
         with (
             patch.object(scraper, "search_file", return_value=raw_result),
             patch(
-                "google_lens_scraper.ai_analyzer.VisualAnalyzer.analyze",
+                "google_lens_pro.ai_analyzer.VisualAnalyzer.analyze",
                 return_value=sample_analysis,
             ),
-            patch("google_lens_scraper._pro.license_manager.validate") as mock_val,
+            patch("google_lens_pro._pro.license_manager.validate") as mock_val,
         ):
             mock_val.return_value.is_valid = True
             res = await scraper.search(
@@ -286,3 +296,45 @@ class TestClientAIIntegration:
             assert res.commerce is not None
             assert res.analysis is not None
             assert res.analysis.attributes.brand == "Apple"
+
+
+def test_deduce_native_analysis_filters_generic_serp_titles():
+    """Verify that native deduction ignores generic SERP titles like 'Search Results' and uses OCR/brand heuristics."""
+    from google_lens_pro.ai_analyzer import deduce_native_analysis
+    from google_lens_pro.models import KnowledgeGraph
+
+    kg = KnowledgeGraph(title="Search Results")
+    ocr = "NIKE\nFIRN FLYKNI\nNIKE FREE"
+    matches = [
+        VisualMatch(title="Sustainable Canvas Sneakers – Ur", link="https://woolentor.com"),
+        VisualMatch(title="Nike Free RN Flyknit 2017 - GOAT", link="https://goat.com", source="GOAT"),
+        VisualMatch(title="Running Shoes Elite | LUXE", link="https://luxe.com"),
+    ]
+
+    res = deduce_native_analysis(visual_matches=matches, knowledge_graph=kg, ocr_text=ocr)
+    assert res is not None
+    assert res.attributes.brand == "Nike"
+    # Verify dynamic suffix stripping removed "- GOAT"
+    assert res.attributes.model_or_name == "Nike Free RN Flyknit 2017"
+    # Category is None when not provided by KnowledgeGraph (no hardcoded category guessing)
+    assert res.attributes.category is None
+    assert "Search Results" not in (res.attributes.brand or "")
+    assert "Search Results" not in (res.attributes.model_or_name or "")
+
+
+def test_deduce_native_analysis_preserves_kg_category():
+    """Verify that native deduction adopts KnowledgeGraph subtitle when available."""
+    from google_lens_pro.ai_analyzer import deduce_native_analysis
+    from google_lens_pro.models import KnowledgeGraph
+
+    kg = KnowledgeGraph(title="Search Results", subtitle="Athletic Footwear")
+    ocr = "NIKE\nFIRN FLYKNI\nNIKE FREE"
+    matches = [
+        VisualMatch(title="Nike Free RN Flyknit 2017", link="https://goat.com"),
+    ]
+
+    res = deduce_native_analysis(visual_matches=matches, knowledge_graph=kg, ocr_text=ocr)
+    assert res is not None
+    assert res.attributes.category == "Athletic Footwear"
+    assert res.attributes.brand == "Nike"
+

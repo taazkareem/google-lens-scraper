@@ -1,9 +1,10 @@
 """Asynchronous Google Lens Scraper client."""
 
 import asyncio
+import inspect
 import io
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,16 @@ from .parser import LensParser
 from .protobuf_engine import ProtobufEngine
 from .relevance import process_commerce_relevance
 from .settings import get_gemini_billing_tier
+
+ProgressCallback = Callable[[str], Any]
+
+
+async def _invoke_progress(on_progress: ProgressCallback | None, msg: str) -> None:
+    if on_progress is None:
+        return
+    res = on_progress(msg)
+    if inspect.isawaitable(res):
+        await res
 
 
 class AsyncLensScraper:
@@ -154,8 +165,15 @@ class AsyncLensScraper:
             matches, kg = LensParser.parse_html(await page.content())
         return matches, kg
 
-    async def detect(self, query: str | Path | bytes) -> LensSearchResult:
+    async def detect(
+        self,
+        query: str | Path | bytes,
+        on_progress: ProgressCallback | None = None,
+    ) -> LensSearchResult:
         """Fast-path only (async): extracts OCR and objects via Protobuf without browser rendering."""
+        await _invoke_progress(
+            on_progress, "Extracting OCR text & objects via Google Lens Protobuf API..."
+        )
         image_bytes = await self._resolve_to_bytes(query)
         proto_data = await self.protobuf_engine.process_image_bytes(image_bytes)
 
@@ -169,6 +187,86 @@ class AsyncLensScraper:
             knowledge_graph=None,
         )
 
+    async def search_shopping(
+        self,
+        query: str,
+        country: str | None = None,
+        currency: str | None = None,
+        deep: bool = False,
+        max_results: int = 40,
+        on_progress: ProgressCallback | None = None,
+    ) -> Any:
+        """Searches Google Shopping directly for verified merchant offers and price comparisons (async)."""
+        from .engines.shopping.engine import ShoppingEngine
+
+        engine = ShoppingEngine(config=self.config)
+        return await engine.search_async(
+            query=query,
+            country=country,
+            currency=currency,
+            deep=deep,
+            max_results=max_results,
+            on_progress=on_progress,
+        )
+
+    async def search_image(
+        self,
+        query: str | Path | bytes,
+        enrich: bool = True,
+        analyze: bool = True,
+        studio: bool = False,
+        studio_output: str | Path | None = None,
+        studio_prompt: str | None = None,
+        country: str | None = None,
+        currency: str | None = None,
+        on_progress: ProgressCallback | None = None,
+    ) -> LensSearchResult:
+        """Explicitly executes visual image search and shopping fusion (async)."""
+        return await self.search(
+            query=query,
+            enrich=enrich,
+            analyze=analyze,
+            studio=studio,
+            studio_output=studio_output,
+            studio_prompt=studio_prompt,
+            country=country,
+            currency=currency,
+            on_progress=on_progress,
+        )
+
+    async def ocr(
+        self,
+        query: str | Path | bytes,
+        on_progress: ProgressCallback | None = None,
+    ) -> str | None:
+        """Sub-second OCR text extraction (zero-browser, fast-path Protobuf)."""
+        res = await self.detect(query, on_progress=on_progress)
+        return res.ocr_text
+
+    async def fuse(
+        self,
+        query: str | Path | bytes,
+        country: str | None = None,
+        currency: str | None = None,
+        enable_shopping: bool = True,
+        on_progress: ProgressCallback | None = None,
+    ) -> LensSearchResult:
+        """Executes the complete Unified Fusion pipeline (Lens + Shopping + AI + Enrichment)."""
+        res = await self.search(
+            query,
+            enrich=False,
+            analyze=False,
+            country=country,
+            currency=currency,
+            on_progress=on_progress,
+        )
+        return await _pro.fuse_async(
+            res,
+            config=self.config,
+            enable_shopping=enable_shopping,
+            on_progress=on_progress,
+        )
+
     async def search(
         self,
         query: str | Path | bytes,
@@ -177,21 +275,36 @@ class AsyncLensScraper:
         studio: bool = False,
         studio_output: str | Path | None = None,
         studio_prompt: str | None = None,
+        country: str | None = None,
+        currency: str | None = None,
+        deep: bool = False,
+        fuse: bool = False,
+        on_progress: ProgressCallback | None = None,
     ) -> LensSearchResult:
         """Universal query dispatcher (async).
 
-        Args:
-            query: Public image URL, local image path, bytes, or Google Lens result URL.
-            enrich: If True, enriches visual matches with e-commerce pricing, clean canonical URLs,
-                   and merchant classification (requires Polar.sh license for full data; otherwise
-                   returns a 1-item teaser preview). Defaults to True.
-            analyze: If True, performs deep multimodal visual intelligence via Gemini 3.8 Flash
-                    when GEMINI_API_KEY is present. Defaults to True.
-            studio: If True, synthesizes an 8K commercial product packshot via Nano Banana Pro.
-            studio_output: File path to save generated 8K studio packshot.
-            studio_prompt: Custom prompt for studio packshot generation.
+        - If input is text/UPC: Scrapes verified merchant offers directly via Google Shopping.
+        - If input is an image: Performs visual discovery and executes Unified Fusion with Google Shopping.
         """
         kind, value = classify_query(query)
+
+        # Smart text query dispatch: direct Google Shopping search
+        if kind == "text":
+            await _invoke_progress(on_progress, f"Searching Google Shopping for '{value}'...")
+            shop_res = await self.search_shopping(
+                value,
+                country=country,
+                currency=currency,
+                deep=deep,
+                on_progress=on_progress,
+            )
+            return LensSearchResult(
+                query_url=None,
+                shopping=shop_res,
+                visual_matches=[],
+            )
+
+        await _invoke_progress(on_progress, "Navigating Google Lens & extracting visual matches...")
         if kind == "bytes":
             res = await self.search_bytes(value)
         elif kind == "google_url":
@@ -201,15 +314,13 @@ class AsyncLensScraper:
         else:
             res = await self.search_file(value)
 
-        if enrich:
-            res = await _pro.enrich_async(res)
-
         accumulator = UsageAccumulator(
             default_model="gemini-3.8-flash",
             billing_tier=get_gemini_billing_tier(),
         )
 
         if analyze:
+            await _invoke_progress(on_progress, "Running Gemini 3.8 Flash multimodal analysis...")
             analyzer = VisualAnalyzer(accumulator=accumulator)
             res.analysis = await asyncio.to_thread(
                 analyzer.analyze,
@@ -218,6 +329,17 @@ class AsyncLensScraper:
                 knowledge_graph=res.knowledge_graph,
                 ocr_text=res.ocr_text,
             )
+
+        if fuse:
+            await _invoke_progress(on_progress, "Fusing Google Lens matches & Google Shopping offers...")
+            res = await _pro.fuse_async(res, config=self.config, on_progress=on_progress)
+        elif enrich:
+            match_count = len(res.visual_matches)
+            await _invoke_progress(
+                on_progress,
+                f"Enriching merchant pricing & canonical URLs ({match_count} matches)...",
+            )
+            res = await _pro.enrich_async(res, on_progress=on_progress)
 
         if res.commerce:
             res.commerce = process_commerce_relevance(
@@ -230,6 +352,7 @@ class AsyncLensScraper:
             res.analysis = res.analysis or res.commerce.analysis
 
         if studio:
+            await _invoke_progress(on_progress, "Synthesizing 8K commercial product packshot...")
             synthesizer = StudioSynthesizer(accumulator=accumulator)
             if synthesizer.is_available:
                 res.studio_asset = await asyncio.to_thread(
@@ -434,3 +557,10 @@ class AsyncLensScraper:
         if query_str.startswith(("http://", "https://")):
             return await self._fetch_image_bytes(query_str)
         raise LensConfigurationError(f"Cannot resolve '{query}' to image bytes.")
+
+
+# Canonical alias for the unified async client
+AsyncGoogleLens = AsyncLensScraper
+
+__all__ = ["AsyncGoogleLens", "AsyncLensScraper", "ProgressCallback"]
+

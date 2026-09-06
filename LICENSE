@@ -1,13 +1,13 @@
-Google Lens Scraper is dual-licensed.
+Google Lens Pro is dual-licensed.
 
-The MIT License below covers every file in this distribution EXCEPT the two
+The MIT License below covers every file in this distribution EXCEPT the Pro
 modules named here, which are proprietary:
 
-    google_lens_scraper/license.py
-    google_lens_scraper/commerce.py
+    google_lens_pro/license.py
+    google_lens_pro/commerce/
 
-and the compiled forms of those two modules shipped in binary wheels
-(license.*.so, license.*.pyd, commerce.*.so, commerce.*.pyd, and the shared
+and the compiled forms of those modules shipped in binary wheels
+(license.*.so, license.*.pyd, commerce/ and the shared
 mypyc extension module built from them).
 
 Those modules are covered by the Proprietary License that follows the MIT text.

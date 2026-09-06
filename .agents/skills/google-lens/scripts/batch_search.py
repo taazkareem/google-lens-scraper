@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # dependencies = [
-#   "google-lens-scraper",
+#   "google-lens-pro",
 # ]
 # ///
 """Standalone batch-search script for processing multiple images via Google Lens."""
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from google_lens_scraper import AsyncLensScraper, LensConfig
+from google_lens_pro import AsyncLensScraper, LensConfig
 
 VALID_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
 

@@ -11,13 +11,13 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from google_lens_scraper import _pro
-from google_lens_scraper._pro import (
+from google_lens_pro import _pro
+from google_lens_pro._pro import (
     POLAR_LINKS,
     get_paywall_message,
 )
-from google_lens_scraper.cli import cli
-from google_lens_scraper.models import LensSearchResult, VisualMatch
+from google_lens_pro.cli import cli
+from google_lens_pro.models import LensSearchResult, VisualMatch
 
 
 def _sample_result() -> LensSearchResult:
@@ -39,7 +39,7 @@ def test_licence_commands_exit_cleanly_without_pro_engines():
         for args in (["pro", "status"], ["activate", "LENS_X"], ["license", "deactivate"]):
             result = runner.invoke(cli, args)
             assert result.exit_code == 1, args
-            assert "pip install google-lens-scraper" in result.output, args
+            assert "pip install google-lens-pro" in result.output, args
 
 
 def test_checkout_still_reachable_without_pro_engines():

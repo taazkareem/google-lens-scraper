@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from google_lens_scraper.config import LensConfig
-from google_lens_scraper.session import SessionManager
+from google_lens_pro.config import LensConfig
+from google_lens_pro.session import SessionManager
 
 
 def test_session_manager_save_and_load(tmp_path: Path):
@@ -101,7 +101,7 @@ def test_session_manager_dotenv_loading(tmp_path: Path, monkeypatch):
 
 
 def test_write_env_file(tmp_path: Path, monkeypatch):
-    from google_lens_scraper.cli import _write_env_file
+    from google_lens_pro.cli import _write_env_file
 
     monkeypatch.chdir(tmp_path)
     env_file = _write_env_file("test_base64_payload")

@@ -63,6 +63,7 @@ class StudioSynthesizer:
 
         try:
             from google import genai
+            from google.genai import types
         except ImportError:
             logger.warning("google-genai package not installed; skipping studio generation.")
             return None
@@ -81,10 +82,19 @@ class StudioSynthesizer:
 
         contents = [pil_image, final_prompt]
 
+        config = None
+        if hasattr(types, "GenerateContentConfig") and hasattr(
+            types, "AutomaticFunctionCallingConfig"
+        ):
+            config = types.GenerateContentConfig(
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+            )
+
         try:
             response = client.models.generate_content(
                 model=self.model_name,
                 contents=contents,  # type: ignore[arg-type]
+                config=config,
             )
 
             # Record telemetry in accumulator if provided

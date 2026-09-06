@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # dependencies = [
-#   "google-lens-scraper",
+#   "google-lens-pro",
 # ]
 # ///
 """Standalone single-image search script with filtering support for Agent Skills."""
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from google_lens_scraper import LensConfig, LensScraper
+from google_lens_pro import LensConfig, LensScraper
 
 
 def parse_price(price_str: str | None) -> float | None:

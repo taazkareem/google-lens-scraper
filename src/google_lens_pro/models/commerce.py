@@ -1,131 +1,42 @@
-"""Data models for Google Lens Scraper responses using Pydantic."""
+"""SPDX-FileCopyrightText: © 2026 Talib Kareem <taazkareem@icloud.com>
+SPDX-License-Identifier: LicenseRef-Proprietary
+
+Data models for enriched commerce intelligence, market valuation, and visual AI analysis.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from enum import Enum
 from typing import Any
-
 from pydantic import BaseModel, Field, computed_field
 
-
-class BoundingBox(BaseModel):
-    """Normalized bounding box coordinates (0.0 to 1.0)."""
-
-    center_x: float = Field(default=0.5, description="Normalized horizontal center")
-    center_y: float = Field(default=0.5, description="Normalized vertical center")
-    width: float = Field(default=1.0, description="Normalized width")
-    height: float = Field(default=1.0, description="Normalized height")
-    rotation_deg: float = Field(default=0.0, description="Rotation in degrees")
-
-
-class DetectedObject(BaseModel):
-    """Object detected in an image by Google Lens."""
-
-    id: str = Field(default="", description="Internal Google object ID")
-    bounding_box: BoundingBox | None = Field(default=None, description="Object bounds")
-    is_full_image: bool = Field(default=False, description="True if object represents full image")
-
-
-class VisualMatch(BaseModel):
-    """A visual match item from Google Lens search results."""
-
-    title: str = Field(default="", description="Title of the matching page or product")
-    link: str = Field(default="", description="Direct destination URL of the matched web page")
-    thumbnail: str | None = Field(default=None, description="Google CDN thumbnail image URL")
-    source: str | None = Field(
-        default=None, description="Publisher or domain name (e.g. Amazon, Wikipedia)"
-    )
-    source_icon: str | None = Field(default=None, description="Publisher favicon or logo URL")
-    price: str | None = Field(default=None, description="Product price if shopping listing")
-    currency: str | None = Field(default=None, description="Currency symbol or code (e.g. $, USD)")
-    in_stock: bool | None = Field(default=None, description="Stock status if available")
-
-
-class KnowledgeGraph(BaseModel):
-    """Knowledge Graph entity identified by Google Lens."""
-
-    title: str | None = Field(default=None, description="Identified entity name")
-    subtitle: str | None = Field(default=None, description="Entity classification or subtitle")
-    description: str | None = Field(default=None, description="Short entity summary")
-    thumbnail: str | None = Field(default=None, description="Entity image thumbnail URL")
-
-
-class MerchantCategory(str, Enum):
-    """Classification of seller / merchant domain."""
-
-    OFFICIAL_BRAND = "official_brand"
-    MAJOR_MARKETPLACE = "major_marketplace"
-    RESELLER_SPECIALIST = "reseller_specialist"
-    UNVERIFIED = "unverified"
-
-
-class PageType(str, Enum):
-    """Classification of destination page intent."""
-
-    PRODUCT = "product"
-    ARTICLE = "article"
-    SOCIAL = "social"
-    PORTFOLIO = "portfolio"
-    MARKETPLACE = "marketplace"
-    UNCATEGORIZED = "uncategorized"
-
-
-# Page types that represent an actual buyable listing rather than editorial/social content.
-COMMERCIAL_PAGE_TYPES = (PageType.PRODUCT, PageType.MARKETPLACE)
-
-
-class StockStatus(str, Enum):
-    """Normalized inventory availability status."""
-
-    IN_STOCK = "in_stock"
-    OUT_OF_STOCK = "out_of_stock"
-    PREORDER = "preorder"
-    UNKNOWN = "unknown"
-
-
-class ItemCondition(str, Enum):
-    """Item physical or commercial condition."""
-
-    NEW = "new"
-    USED = "used"
-    REFURBISHED = "refurbished"
-    UNKNOWN = "unknown"
-
-
-class NormalizedPrice(BaseModel):
-    """Normalized numeric price and currency representation."""
-
-    raw: str = Field(description="Original price string from Google Lens (e.g. '$24.99')")
-    amount: float = Field(description="Parsed numerical price value")
-    currency: str = Field(default="USD", description="Normalized ISO currency code or symbol")
-
-
-class MatchRelevance(str, Enum):
-    """Semantic relevance to the identified target product."""
-
-    EXACT_MATCH = "exact_match"
-    SIMILAR = "similar"
-    REFERENCE = "reference"
-    UNRELATED = "unrelated"
+from .common import (
+    COMMERCIAL_PAGE_TYPES,
+    ItemCondition,
+    MatchRelevance,
+    MerchantCategory,
+    NormalizedPrice,
+    PageType,
+    StockStatus,
+)
+from .shopping import ShoppingOffer
 
 
 class EnrichedCommerceMatch(BaseModel):
-    """A commercial visual match enriched with canonical URL and pricing intelligence."""
+    """A commercial listing enriched with canonical URL and pricing intelligence."""
 
     title: str = Field(default="", description="Product or page title")
     direct_url: str = Field(
         default="",
         description="Clean, canonical destination URL (unwrapped from Google redirects and tracking)",
     )
-    original_url: str = Field(default="", description="Original Google Lens destination link")
+    original_url: str = Field(default="", description="Original Google destination link")
     price: NormalizedPrice | None = Field(default=None, description="Normalized price if listed")
     merchant_name: str | None = Field(default=None, description="Domain or seller name")
     merchant_category: MerchantCategory | None = Field(
         default=None, description="Seller classification"
     )
     thumbnail: str | None = Field(default=None, description="Thumbnail image URL")
-    match_score: int = Field(default=100, description="Visual match confidence score (0-100%)")
+    match_score: int = Field(default=100, description="Visual/product match confidence score (0-100%)")
     relevance: MatchRelevance | None = Field(
         default=None,
         description="Semantic relevance of this listing to the identified target product",
@@ -134,7 +45,7 @@ class EnrichedCommerceMatch(BaseModel):
         default=None, description="Short explanation for the relevance classification"
     )
     page_type: PageType = Field(
-        default=PageType.UNCATEGORIZED, description="Classified intent of destination page"
+        default=PageType.PRODUCT, description="Classified intent of destination page"
     )
     brand: str | None = Field(default=None, description="Identified brand or manufacturer")
     sku: str | None = Field(default=None, description="Stock Keeping Unit or GTIN/UPC product code")
@@ -150,6 +61,9 @@ class EnrichedCommerceMatch(BaseModel):
     shipping_info: str | None = Field(
         default=None, description="Shipping or tax details if available"
     )
+    source_engine: str = Field(
+        default="lens", description="Origin of match ('lens' or 'shopping')"
+    )
 
     @computed_field(description="Stock status boolean derived from stock_status, if detected")  # type: ignore[prop-decorator]
     @property
@@ -160,6 +74,27 @@ class EnrichedCommerceMatch(BaseModel):
             return False
         return None
 
+    @classmethod
+    def from_shopping_offer(cls, offer: ShoppingOffer) -> EnrichedCommerceMatch:
+        """Converts a verified Google Shopping offer into an EnrichedCommerceMatch."""
+        return cls(
+            title=offer.title,
+            direct_url=offer.direct_url,
+            original_url=offer.original_url,
+            price=offer.price,
+            merchant_name=offer.merchant_name,
+            merchant_category=offer.merchant_category,
+            thumbnail=offer.thumbnail,
+            match_score=98,
+            relevance=MatchRelevance.EXACT_MATCH,
+            relevance_reason="Verified Google Shopping product listing",
+            page_type=PageType.PRODUCT,
+            condition=offer.condition,
+            stock_status=offer.stock_status,
+            shipping_info=offer.shipping_info,
+            source_engine="shopping",
+        )
+
 
 class CommerceSummary(BaseModel):
     """Aggregated market pricing and seller analytics."""
@@ -167,7 +102,7 @@ class CommerceSummary(BaseModel):
     target_product: str | None = Field(
         default=None, description="Identified product against which matches were evaluated"
     )
-    total_matches: int = Field(default=0, description="Total visual matches analyzed")
+    total_matches: int = Field(default=0, description="Total matches analyzed")
     total_priced_matches: int = Field(default=0, description="Listings with detected prices")
     min_price: float | None = Field(
         default=None, description="Lowest price detected across listings"
@@ -251,7 +186,7 @@ class CommerceIntelligence(BaseModel):
         default=False, description="True if results represent a 1-item teaser preview"
     )
     upgrade_message: str | None = Field(
-        default=None, description="Polar.sh upgrade prompt if in preview/unauthenticated mode"
+        default=None, description="Polar.sh upgrade prompt if in preview mode"
     )
     analysis: VisualAnalysis | None = Field(
         default=None, description="Multimodal visual intelligence via Gemini"
@@ -285,51 +220,3 @@ class GeneratedStudioAsset(BaseModel):
     model: str = Field(
         default="models/nano-banana-pro-preview", description="Model used for synthesis"
     )
-
-
-class LensSearchResult(BaseModel):
-    """Structured response from a Google Lens visual search."""
-
-    query_url: str | None = Field(default=None, description="The Google Lens search URL executed")
-    search_session_id: str | None = Field(default=None, description="Google gsessionid token")
-    server_session_id: str | None = Field(default=None, description="Google lsessionid token")
-    ocr_text: str | None = Field(default=None, description="Full OCR text extracted from the image")
-    detected_objects: list[DetectedObject] = Field(
-        default_factory=list, description="Visual objects found"
-    )
-    visual_matches: list[VisualMatch] = Field(
-        default_factory=list, description="List of matching web items"
-    )
-    knowledge_graph: KnowledgeGraph | None = Field(default=None, description="Knowledge Graph card")
-    commerce: CommerceIntelligence | None = Field(
-        default=None, description="Pro E-Commerce and Resale Arbitrage intelligence"
-    )
-    analysis: VisualAnalysis | None = Field(
-        default=None, description="Multimodal visual intelligence via Gemini 3.8 Flash"
-    )
-    studio_asset: GeneratedStudioAsset | None = Field(
-        default=None, description="Synthesized 8K commercial catalog asset via Nano Banana Pro"
-    )
-    cost: dict[str, Any] | None = Field(
-        default=None, description="Detailed Gemini token usage and financial cost telemetry"
-    )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serializes the result to a clean Python dictionary."""
-        return self.model_dump(exclude_none=True)
-
-    def to_json(self, indent: int = 2) -> str:
-        """Serializes the result to a formatted JSON string."""
-        return self.model_dump_json(indent=indent, exclude_none=True)
-
-    def __len__(self) -> int:
-        """Returns the number of visual matches."""
-        return len(self.visual_matches)
-
-    def iter_matches(self) -> Iterator[VisualMatch]:
-        """Iterates over visual matches."""
-        return iter(self.visual_matches)
-
-    def __getitem__(self, index: int) -> VisualMatch:
-        """Allows direct indexing into visual matches."""
-        return self.visual_matches[index]

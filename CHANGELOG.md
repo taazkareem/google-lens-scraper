@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-06
+
+### Added
+- **Clean Rebranding to `google-lens-pro`**:
+  - Rebranded distribution to `google-lens-pro` on PyPI to reflect its evolution into a full visual discovery, multimodal AI, and multi-marketplace commercial intelligence suite.
+  - Clean transition to `google_lens_pro` namespace and published CLI aliases `lens`, `google-lens`, and `google-lens-pro`.
+  - Updated all documentation, license files, CI workflows, and assets (including a brand new AI-generated `assets/banner.jpg`).
+- **Direct Store Product URL Crawler (`DirectStoreResolver`)**:
+  - Automatically crawls merchant search results concurrently using Scrapling's `AsyncFetcher` to resolve exact direct product SKU URLs (e.g. `poshmark.com/listing/...`, `goat.com/sneakers/...`, `flightclub.com/...`) instead of generic site search URLs.
+  - Concurrency limited via `asyncio.Semaphore(8)` with URL deduplication cache and 4-second timeout.
+  - Real-time progress updates stream live to the terminal spinner (`Resolving direct product links (X/Y)...`).
+- **Free vs. Pro Tier Clarification & Paywall Precision**:
+  - Clarified that Google Lens visual reverse image search, OCR text extraction, and Gemini 3.8 Flash multimodal vision are completely free / BYOK (`GEMINI_API_KEY`).
+  - Pro license unlocks unlimited multi-store pricing fusion (50+ listings from StockX, GOAT, Flight Club, eBay, Walmart), direct product SKU URL crawling, market valuation analytics, and bulk dataset exports.
+- **Modular Domain Architecture**:
+  - Decomposed monolithic modules into domain-driven subpackages:
+    - `core/`: Centralized authentication (`auth.py`), stealth browser contexts (`browser.py`), configuration (`config.py`), concurrent HTTP fetcher (`fetcher.py`), and licensing (`license.py`).
+    - `models/`: Clean typed Pydantic models for common primitives (`common.py`), Google Lens (`lens.py`), Google Shopping (`shopping.py`), commerce intelligence (`commerce.py`), and unified results (`result.py`).
+    - `commerce/`: Modularized destination unwrapping (`unwrapper.py`), price normalization (`normalizer.py`), seller classification (`classifier.py`), LD-JSON/Next.js metadata extraction (`metadata.py`), and market analytics aggregation (`aggregator.py`).
+    - `engines/shopping/`: Dedicated Google Shopping engine (`engine.py`) and HTML parser (`parser.py`) for scraping SERPs and comparative multi-seller product tables.
+    - `pipeline/`: Unified Fusion Pipeline orchestrator (`orchestrator.py`) combining visual discovery and live shopping offers.
+- **Google Shopping Engine (`ShoppingEngine`)**:
+  - Sub-second retrieval of Google Shopping offers via Scrapling HTTP with automatic Patchright stealth browser fallback.
+  - Extracts verified merchant pricing, direct store URLs, shipping details, star ratings, review counts, stock status, and item condition.
+  - Supports `--country` (`gl=`) and `--currency` (`hl=`) parameters for localized international e-commerce intelligence.
+  - Supports `--deep` scraping of comparative product tables (`/shopping/product/...`) across all participating merchants.
+- **Unified Fusion Pipeline (`FusionOrchestrator`)**:
+  - Unifies Google Lens visual matches, Gemini multimodal identification, real-time Google Shopping offers, and deep destination metadata.
+  - Cross-source merchant deduplication, unified market pricing analytics (min/max/average prices), and verified best deal highlight.
+  - Exposed via `GoogleLens.fuse()` and `AsyncGoogleLens.fuse()`, as well as `google_lens_scraper._pro.fuse()`.
+- **Smart CLI Dispatch & `lens` Binary**:
+  - Added short CLI binary alias `lens` in `[project.scripts]`.
+  - Smart root CLI dispatch: `lens <input>` automatically routes text queries/UPCs to Google Shopping (`shop`) and image paths/URLs/bytes to Google Lens visual search (`search`).
+  - Dedicated `lens shop` subcommand with `--country`, `--currency`, `--deep`, `--max-results`, `--export-json`, and `--export-csv` options.
+- **Unified Developer SDK (`GoogleLens` & `AsyncGoogleLens`)**:
+  - Primary `GoogleLens` client export with `search()`, `search_shopping()`, `fuse()`, `detect()`, and `ocr()` APIs.
+- **Live Terminal Progress Indicator (`rich.status`)**: Added real-time progress feedback on `stderr` during interactive CLI searches (`google-lens search`). Features an animated spinner displaying dynamic pipeline stages (Lens navigation, merchant destination metadata scraping, price intelligence extraction, and multimodal AI analysis) that cleans up automatically on completion.
+- **Decoupled `on_progress` SDK Hook**: Added `on_progress: ProgressCallback | None` across `LensScraper.search()`, `LensScraper.detect()`, `AsyncLensScraper.search()`, and `CommerceEnricher.process()`, allowing library consumers to subscribe to granular pipeline stage events without coupling the scraping engine to console output.
+- **Strict Stderr Isolation**: Ensured all progress telemetry is routed to `sys.stderr` and suppressed automatically when `--json-output` is requested or stdout/stderr is redirected, ensuring zero corruption for pipes (`| jq`) and automation workflows.
+
+### Changed
+- **Consolidated CLI Terminal Dashboard**: Unified the fragmented terminal search output (`google-lens search <query> --enrich`) into an intuitive 3-tier hierarchy that mirrors the JSON response structure:
+  1. **Executive Product Intelligence & Market Valuation Card**: An integrated Rich panel combining multimodal visual identification (brand, model, category, colorway, condition, est. MSRP) with aggregated market pricing analytics (listings analyzed, price range, average price, 🏆 best deal seller with clickable direct URL, resale outlook, and tags).
+  2. **Commercial Products & Pricing Table**: A focused, deduplicated table displaying only verified commercial listings with AI evaluation badges, prices, and clickable clean destination URLs.
+  3. **Metadata & Telemetry Footer**: Clean summary line of product/editorial/social breakdowns, export confirmations, and Gemini token cost telemetry.
+- **Suppressed Redundant SERP Tables**: Suppressed the raw 20-row Google Lens visual matches table during enriched searches, eliminating duplicate listing dumps while retaining raw tables when `--no-enrich` is explicitly requested.
+
+### Removed
+- **Hardcoded Product Category Guesses**: Removed arbitrary domain keyword guessing (`"Running Shoes / Sneakers"`, `"Luxury Watches"`, `"Consumer Electronics"`) from native fallback deduction in `deduce_native_analysis()`. The engine now preserves Google Lens's authentic Knowledge Graph classification (`knowledge_graph.subtitle`) when available, and omits speculative category labels cleanly when unverified.
+- **Domain-Specific Footwear Heuristics**: Removed hardcoded checks for `"shoes"`, `"sneakers"`, `"footwear"`, and `"nike"` from `CommerceEnricher` page type classification, restoring universal category-agnostic classification across all product verticals.
+- **Static Merchant Title Cleaner Regex**: Replaced hardcoded 12-merchant regex (`GOAT`, `eBay`, `StockX`, `Amazon`, `Walmart`, `TheRealReal`, `Grailed`, `SeedProd`, `WooLentor`, `Shopify`, `B&H`, `Chrono24`) in title cleaning with dynamic candidate source, SLD, and domain matching.
+- **Category Nouns in `GENERIC_TITLES`**: Removed category nouns (`"shoe"`, `"shoes"`, `"clothing"`, `"home"`) from `GENERIC_TITLES`, restricting generic title replacement strictly to universal CTA and placeholder anchor strings.
+
+### Fixed
+- **Fallback Native Product Deduction**: Fixed a bug where `deduce_native_analysis()` accepted generic SERP titles (e.g. `"Search Results"`) from `knowledge_graph.title` when Gemini API encountered a 503 error, which caused the brand to be extracted as `"Search"` and the model as `"Search Results"`, subsequently marking all legitimate commercial matches as `🚫 Noise`. Added generic SERP title filtering, OCR brand detection, and candidate title cross-referencing.
+- **Gemini Transient Error Resilience**: Added automatic retry with backoff for transient 503 UNAVAILABLE and 429 RESOURCE_EXHAUSTED errors in `VisualAnalyzer.analyze()`, and expanded candidate fallback models to include `gemini-3.5-flash`.
+- **CLI Table URL Truncation**: Fixed a bug where `Clean URL` and `Destination URL` columns in CLI terminal tables were being hard-sliced with `[:40]` and `[:50]`, corrupting URLs and causing 404 "page not found" errors when copied or clicked. Replaced with full OSC 8 hyperlinks (`[link=url]url[/link]`) and column `overflow="fold"`.
+- **Gemini Automatic Function Calling (AFC) Warning**: Fixed Google GenAI SDK warning (`Direct use of automatic function calling (AFC) in Models.generate_content is not recommended`) by explicitly setting `automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)` on single-turn `GenerateContentConfig` objects in `VisualAnalyzer` and `StudioSynthesizer`.
+- **Universal Next.js Out-of-Stock & Live Price Extraction**: Fixed a bug where Next.js hydration extraction prioritized catalog MSRP (`specialDisplayPriceCents` / `retailPriceCents`) over live transaction offers (`lowestPriceCents` / `price`), and hardcoded `StockStatus.IN_STOCK`. The engine now checks universal availability signals across Next.js payloads (seller counts, stock status flags, inventory levels, zero live price indicators), suppresses catalog MSRP when an item has no active sellers, and ensures market valuation `best_deal` selection strictly prefers in-stock purchase offers.
+
 ## [0.1.4] - 2026-09-06
 
 ### Added

@@ -1,4 +1,8 @@
-"""Session management and authentication for Google Lens Scraper."""
+"""SPDX-FileCopyrightText: © 2026 Talib Kareem <taazkareem@icloud.com>
+SPDX-License-Identifier: MIT
+
+Session management and authentication for Google Lens and Google Shopping.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +19,7 @@ from patchright.sync_api import sync_playwright
 
 from .config import (
     BROWSER_LAUNCH_ARGS,
+    CONFIG_DIR,
     DEFAULT_CLIENT_HINTS,
     DEFAULT_USER_AGENT,
     parse_cookie_string,
@@ -48,16 +53,13 @@ def _load_dotenv_if_present() -> None:
         logger.debug("Could not read local .env file: %s", e)
 
 
-DEFAULT_SESSION_DIR = (
-    Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "google-lens-scraper"
-)
-DEFAULT_SESSION_FILE = DEFAULT_SESSION_DIR / "session.json"
+DEFAULT_SESSION_FILE = CONFIG_DIR / "session.json"
 
 
 class SessionManager:
     """Manages persistent browser session state (cookies, tokens) to bypass Google anti-bot."""
 
-    def __init__(self, session_path: Path | None = None):
+    def __init__(self, session_path: Path | None = None) -> None:
         self.session_path = session_path or DEFAULT_SESSION_FILE
 
     def ensure_dir(self) -> None:
@@ -77,10 +79,8 @@ class SessionManager:
 
     def load_session(self) -> dict[str, Any] | None:
         """Loads saved session state from disk or environment variables."""
-        # 0. Load local .env if present in project working directory
         _load_dotenv_if_present()
 
-        # 1. Environment variable override (ideal for cloud / Docker / CI)
         env_json = os.environ.get("LENS_STORAGE_STATE_JSON")
         if env_json:
             try:
@@ -104,7 +104,6 @@ class SessionManager:
                 except Exception as e:
                     logger.warning("Failed to read LENS_STORAGE_STATE_PATH: %s", e)
 
-        # 2. Local config file
         if self.session_path.exists():
             try:
                 data = json.loads(self.session_path.read_text(encoding="utf-8"))
@@ -113,7 +112,6 @@ class SessionManager:
             except Exception as e:
                 logger.warning("Failed to load session file %s: %s", self.session_path, e)
 
-        # 3. Direct cookie string env var fallback
         env_cookies = os.environ.get("LENS_COOKIES")
         if env_cookies:
             cookies = parse_cookie_string(env_cookies)
@@ -135,16 +133,12 @@ class SessionManager:
         if not state or "cookies" not in state:
             return False
         cookie_names = {c.get("name") for c in state["cookies"]}
-        # Google search session identifiers
         auth_signals = {"SOCS", "SID", "HSID", "SSID", "NID", "1P_JAR", "AEC"}
         return bool(cookie_names.intersection(auth_signals))
 
     def interactive_login(self, timeout_seconds: int = 180, wait_for_enter: bool = True) -> Path:
-        """Opens a visible browser window allowing the user to sign into Google once.
-
-        Captures the resulting session cookies and saves them for headless reuse.
-        """
-        logger.info("Opening interactive browser for Google Lens authentication...")
+        """Opens a visible browser window allowing the user to sign into Google once."""
+        logger.info("Opening interactive browser for Google authentication...")
         existing_state = self.load_session()
         launch_args = list(BROWSER_LAUNCH_ARGS) + [f"--user-agent={DEFAULT_USER_AGENT}"]
 
@@ -169,7 +163,7 @@ class SessionManager:
 
             if wait_for_enter and sys.stdin.isatty():
                 print("\n" + "=" * 60)
-                print(" Google Lens Authentication & Security Clearance")
+                print(" Google Authentication & Security Clearance")
                 print("=" * 60)
                 print("• A browser window has opened.")
                 print("• If you see a Sign-In prompt, please sign into your Google account.")
@@ -179,7 +173,6 @@ class SessionManager:
                 with contextlib.suppress(EOFError, KeyboardInterrupt):
                     input("\nPress [Enter] to capture credentials and finish: ")
             else:
-                # Automated polling fallback
                 cleared = False
                 for _ in range(timeout_seconds):
                     cookies = context.cookies(["https://www.google.com", "https://lens.google.com"])
@@ -195,14 +188,12 @@ class SessionManager:
                         "Timed out waiting for Google clearance in interactive browser."
                     )
 
-            # Ensure lens.google.com cross-domain tokens (e.g. OSID) are established
             try:
                 page.goto("https://lens.google.com/", wait_until="domcontentloaded", timeout=10000)
                 page.wait_for_timeout(1500)
             except Exception:
                 pass
 
-            # Capture complete storage state
             state = cast(dict[str, Any], context.storage_state())
             saved_path = self.save_session(state)
             browser.close()

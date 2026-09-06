@@ -1,6 +1,6 @@
 """Unit tests for LensConfig."""
 
-from google_lens_scraper.config import LensConfig
+from google_lens_pro.config import LensConfig
 
 
 def test_lens_config_defaults():

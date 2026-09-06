@@ -2,8 +2,8 @@
 
 import pytest
 
-from google_lens_scraper.exceptions import LensRateLimitError
-from google_lens_scraper.parser import LensParser
+from google_lens_pro.exceptions import LensRateLimitError
+from google_lens_pro.parser import LensParser
 
 
 def test_parse_sample_html(sample_lens_html: str):

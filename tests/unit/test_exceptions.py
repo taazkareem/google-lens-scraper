@@ -1,6 +1,6 @@
 """Unit tests for exceptions hierarchy."""
 
-from google_lens_scraper.exceptions import (
+from google_lens_pro.exceptions import (
     LensConfigurationError,
     LensError,
     LensImageError,

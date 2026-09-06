@@ -2,7 +2,7 @@
 
 import json
 
-from google_lens_scraper.models import (
+from google_lens_pro.models import (
     KnowledgeGraph,
     LensSearchResult,
     VisualMatch,
