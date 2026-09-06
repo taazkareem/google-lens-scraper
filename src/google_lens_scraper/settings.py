@@ -6,7 +6,9 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from .gemini_cost_calculator import BILLING_TIERS, BillingTier
 
 logger = logging.getLogger(__name__)
 
@@ -62,4 +64,24 @@ def set_gemini_api_key(key: str) -> None:
     """Persists a Gemini API key into local config.json."""
     config = load_config()
     config["gemini_api_key"] = key.strip()
+    save_config(config)
+
+
+def get_gemini_billing_tier() -> BillingTier:
+    """Resolves Gemini billing tier ('unknown', 'free', or 'paid'). Defaults to 'unknown'."""
+    env_tier = os.environ.get("GEMINI_BILLING_TIER")
+    if env_tier and env_tier.strip().lower() in BILLING_TIERS:
+        return cast(BillingTier, env_tier.strip().lower())
+
+    tier = load_config().get("gemini_billing_tier")
+    if isinstance(tier, str) and tier.strip().lower() in BILLING_TIERS:
+        return cast(BillingTier, tier.strip().lower())
+
+    return "unknown"
+
+
+def set_gemini_billing_tier(tier: str) -> None:
+    """Persists a Gemini billing tier ('unknown', 'free', or 'paid') into local config.json."""
+    config = load_config()
+    config["gemini_billing_tier"] = tier.strip().lower()
     save_config(config)

@@ -10,6 +10,8 @@ from .accumulator import UsageAccumulator
 from .core import calculate_cost
 from .formatters import format_cli_table, to_telemetry_json
 from .models import (
+    BILLING_TIERS,
+    BillingTier,
     GeminiCostBreakdown,
     GeminiUsageRecord,
     ModalityBreakdown,
@@ -27,6 +29,8 @@ __version__ = "1.0.0"
 __all__ = [
     "calculate_cost",
     "UsageAccumulator",
+    "BillingTier",
+    "BILLING_TIERS",
     "PricingRegistry",
     "get_default_registry",
     "reset_default_registry",

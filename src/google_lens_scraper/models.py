@@ -1,5 +1,7 @@
 """Data models for Google Lens Scraper responses using Pydantic."""
 
+from __future__ import annotations
+
 from collections.abc import Iterator
 from enum import Enum
 from typing import Any
@@ -69,6 +71,10 @@ class PageType(str, Enum):
     UNCATEGORIZED = "uncategorized"
 
 
+# Page types that represent an actual buyable listing rather than editorial/social content.
+COMMERCIAL_PAGE_TYPES = (PageType.PRODUCT, PageType.MARKETPLACE)
+
+
 class StockStatus(str, Enum):
     """Normalized inventory availability status."""
 
@@ -95,6 +101,15 @@ class NormalizedPrice(BaseModel):
     currency: str = Field(default="USD", description="Normalized ISO currency code or symbol")
 
 
+class MatchRelevance(str, Enum):
+    """Semantic relevance to the identified target product."""
+
+    EXACT_MATCH = "exact_match"
+    SIMILAR = "similar"
+    REFERENCE = "reference"
+    UNRELATED = "unrelated"
+
+
 class EnrichedCommerceMatch(BaseModel):
     """A commercial visual match enriched with canonical URL and pricing intelligence."""
 
@@ -111,6 +126,13 @@ class EnrichedCommerceMatch(BaseModel):
     )
     thumbnail: str | None = Field(default=None, description="Thumbnail image URL")
     match_score: int = Field(default=100, description="Visual match confidence score (0-100%)")
+    relevance: MatchRelevance | None = Field(
+        default=None,
+        description="Semantic relevance of this listing to the identified target product",
+    )
+    relevance_reason: str | None = Field(
+        default=None, description="Short explanation for the relevance classification"
+    )
     page_type: PageType = Field(
         default=PageType.UNCATEGORIZED, description="Classified intent of destination page"
     )
@@ -142,6 +164,9 @@ class EnrichedCommerceMatch(BaseModel):
 class CommerceSummary(BaseModel):
     """Aggregated market pricing and seller analytics."""
 
+    target_product: str | None = Field(
+        default=None, description="Identified product against which matches were evaluated"
+    )
     total_matches: int = Field(default=0, description="Total visual matches analyzed")
     total_priced_matches: int = Field(default=0, description="Listings with detected prices")
     min_price: float | None = Field(
@@ -155,42 +180,6 @@ class CommerceSummary(BaseModel):
     best_deal: EnrichedCommerceMatch | None = Field(
         default=None, description="Lowest-priced verified listing"
     )
-
-
-class CommerceIntelligence(BaseModel):
-    """Pro E-Commerce and Resale Arbitrage intelligence payload."""
-
-    summary: CommerceSummary = Field(
-        default_factory=CommerceSummary, description="Aggregated market pricing analytics"
-    )
-    items: list[EnrichedCommerceMatch] = Field(
-        default_factory=list, description="All enriched product listings"
-    )
-    is_preview: bool = Field(
-        default=False, description="True if results represent a 1-item teaser preview"
-    )
-    upgrade_message: str | None = Field(
-        default=None, description="Polar.sh upgrade prompt if in preview/unauthenticated mode"
-    )
-
-    @property
-    def products(self) -> list[EnrichedCommerceMatch]:
-        """Returns only commercial product and marketplace listings."""
-        return [
-            item
-            for item in self.items
-            if item.page_type in (PageType.PRODUCT, PageType.MARKETPLACE)
-        ]
-
-    @property
-    def articles(self) -> list[EnrichedCommerceMatch]:
-        """Returns editorial, blog, and news listings."""
-        return [item for item in self.items if item.page_type == PageType.ARTICLE]
-
-    @property
-    def social(self) -> list[EnrichedCommerceMatch]:
-        """Returns social media listings."""
-        return [item for item in self.items if item.page_type == PageType.SOCIAL]
 
 
 class ProductAttributes(BaseModel):
@@ -221,17 +210,70 @@ class ProductAttributes(BaseModel):
     )
 
 
+class CandidateMatchEvaluation(BaseModel):
+    """Candidate evaluation produced by Gemini during visual analysis."""
+
+    index: int = Field(description="Index of candidate match")
+    relevance: MatchRelevance = Field(
+        description="Relevance classification: exact_match, similar, reference, or unrelated"
+    )
+    reason: str | None = Field(default=None, description="Short reason for the classification")
+
+
 class VisualAnalysis(BaseModel):
-    """Multimodal visual intelligence extracted via Gemini 3.8 Flash."""
+    """Multimodal visual intelligence extracted via Gemini."""
 
     summary: str = Field(default="", description="Executive visual summary and item description")
     attributes: ProductAttributes = Field(
         default_factory=ProductAttributes, description="Extracted product attributes"
     )
+    match_evaluations: list[CandidateMatchEvaluation] = Field(
+        default_factory=list,
+        exclude=True,
+        description="Internal candidate evaluations received from Gemini",
+    )
     resale_recommendation: str | None = Field(
         default=None, description="Resale market velocity, demand, or pricing assessment"
     )
     tags: list[str] = Field(default_factory=list, description="Relevant descriptive visual tags")
+
+
+class CommerceIntelligence(BaseModel):
+    """Pro E-Commerce and Resale Arbitrage intelligence payload."""
+
+    summary: CommerceSummary = Field(
+        default_factory=CommerceSummary, description="Aggregated market pricing analytics"
+    )
+    items: list[EnrichedCommerceMatch] = Field(
+        default_factory=list, description="All enriched product listings"
+    )
+    is_preview: bool = Field(
+        default=False, description="True if results represent a 1-item teaser preview"
+    )
+    upgrade_message: str | None = Field(
+        default=None, description="Polar.sh upgrade prompt if in preview/unauthenticated mode"
+    )
+    analysis: VisualAnalysis | None = Field(
+        default=None, description="Multimodal visual intelligence via Gemini"
+    )
+    cost: dict[str, Any] | None = Field(
+        default=None, description="Detailed Gemini token telemetry and financial cost data"
+    )
+
+    @property
+    def products(self) -> list[EnrichedCommerceMatch]:
+        """Returns only commercial product and marketplace listings."""
+        return [item for item in self.items if item.page_type in COMMERCIAL_PAGE_TYPES]
+
+    @property
+    def articles(self) -> list[EnrichedCommerceMatch]:
+        """Returns editorial, blog, and news listings."""
+        return [item for item in self.items if item.page_type == PageType.ARTICLE]
+
+    @property
+    def social(self) -> list[EnrichedCommerceMatch]:
+        """Returns social media listings."""
+        return [item for item in self.items if item.page_type == PageType.SOCIAL]
 
 
 class GeneratedStudioAsset(BaseModel):

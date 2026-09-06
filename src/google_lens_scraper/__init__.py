@@ -24,6 +24,7 @@ from .models import (
     GeneratedStudioAsset,
     KnowledgeGraph,
     LensSearchResult,
+    MatchRelevance,
     MerchantCategory,
     NormalizedPrice,
     ProductAttributes,
@@ -36,7 +37,7 @@ if PRO_AVAILABLE:
     from .commerce import CommerceEnricher, export_commerce_to_csv, export_commerce_to_json
     from .license import LicenseInfo, LicenseManager, license_manager
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 __all__ = [
     "__version__",
@@ -52,6 +53,7 @@ __all__ = [
     "CommerceSummary",
     "EnrichedCommerceMatch",
     "NormalizedPrice",
+    "MatchRelevance",
     "MerchantCategory",
     "ProductAttributes",
     "VisualAnalysis",

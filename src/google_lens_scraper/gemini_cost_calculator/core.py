@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
-from .models import GeminiCostBreakdown
+from .models import BillingTier, GeminiCostBreakdown
 from .normalizer import normalize_usage
 from .registry import PricingRegistry, get_default_registry
 
@@ -11,7 +11,7 @@ def calculate_cost(
     response_or_usage: Any,
     model: str | None = None,
     *,
-    billing_tier: Literal["paid", "free"] = "paid",
+    billing_tier: BillingTier | None = None,
     is_batch: bool = False,
     search_queries: int = 0,
     pricing_registry: PricingRegistry | None = None,
@@ -24,7 +24,7 @@ def calculate_cost(
     Args:
         response_or_usage: Raw SDK response, usage metadata dict, integer count, or GeminiUsageRecord.
         model: Model identifier override (e.g., 'gemini-3.7-flash', 'gemini-embedding-2').
-        billing_tier: 'paid' (actual spend) or 'free' ($0.00 actual spend with what-if paid tracking).
+        billing_tier: 'paid' (actual spend), 'free' ($0.00 actual spend with what-if paid tracking), or 'unknown' (standard list price).
         is_batch: Whether the call was executed via the 50% discount Batch API.
         search_queries: Number of Google Search Grounding queries executed.
         pricing_registry: Custom PricingRegistry instance (defaults to global singleton).
@@ -34,10 +34,15 @@ def calculate_cost(
         GeminiCostBreakdown with itemized costs in USD.
     """
     registry = pricing_registry or get_default_registry()
+    resolved_tier: BillingTier = (
+        billing_tier
+        if billing_tier is not None
+        else getattr(response_or_usage, "billing_tier", "unknown")
+    )
     record = normalize_usage(
         response_or_usage=response_or_usage,
         model=model,
-        billing_tier=billing_tier,
+        billing_tier=resolved_tier,
         is_batch=is_batch,
         search_queries=search_queries,
     )

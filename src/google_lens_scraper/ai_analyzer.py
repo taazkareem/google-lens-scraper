@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import json
 import logging
 import re
@@ -11,6 +10,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from ._image import load_image
 from .gemini_cost_calculator.accumulator import UsageAccumulator
 from .models import (
     KnowledgeGraph,
@@ -40,23 +40,17 @@ Produce an exhaustive, highly structured visual analysis with:
    - authenticity_markers: Specific visual cues used for authentication.
    - estimated_msrp_usd: Estimated original retail price in USD as a number, or null.
    - confidence_score: Confidence rating between 0.0 and 1.0.
-3. resale_recommendation: Market velocity, price arbitrage outlook, or resale advice.
-4. tags: 5-10 descriptive search and cataloging tags.
+3. match_evaluations: For each numbered candidate visual match provided in the prompt, classify its relevance:
+   - index: The 0-based integer index of the candidate match.
+   - relevance: Exactly one of:
+       * "exact_match": Listing is selling or showcasing the identical product, silhouette, and model seen in the image.
+       * "similar": Alternative model from the same brand or a competing product in the same category.
+       * "reference": Editorial article, review, photo portfolio, educational document, or printable worksheet.
+       * "unrelated": Completely different product category, accessory, theme demo, or irrelevant noise.
+   - reason: A concise 1-sentence explanation of why it was classified this way.
+4. resale_recommendation: Market velocity, price arbitrage outlook, or resale advice.
+5. tags: 5-10 descriptive search and cataloging tags.
 """
-
-
-def _load_image(image_input: str | Path | bytes | Image.Image) -> Image.Image | None:
-    """Loads an image into a PIL Image instance."""
-    if isinstance(image_input, Image.Image):
-        return image_input
-    if isinstance(image_input, (str, Path)):
-        p = Path(image_input)
-        if p.exists() and p.is_file():
-            return Image.open(p)
-        return None
-    if isinstance(image_input, bytes):
-        return Image.open(io.BytesIO(image_input))
-    return None
 
 
 def _format_context_prompt(
@@ -80,12 +74,12 @@ def _format_context_prompt(
             parts.append(f"\n[OCR Text Detected in Image]:\n{cleaned_ocr[:500]}")
 
     if visual_matches:
-        top_matches = list(visual_matches[:6])
-        parts.append("\n[Top Web Visual Matches]:")
-        for idx, m in enumerate(top_matches, 1):
+        candidate_matches = list(visual_matches[:25])
+        parts.append("\n[Candidate Visual Matches to Classify]:")
+        for idx, m in enumerate(candidate_matches):
             price_info = f" ({m.price})" if m.price else ""
             source_info = f" on {m.source}" if m.source else ""
-            parts.append(f"  {idx}. {m.title}{price_info}{source_info}")
+            parts.append(f"  [{idx}]: {m.title}{price_info}{source_info}")
 
     return "\n".join(parts)
 
@@ -214,7 +208,7 @@ class VisualAnalyzer:
                 ocr_text=ocr_text,
             )
 
-        pil_image = _load_image(image_input)
+        pil_image = load_image(image_input)
         if pil_image is None:
             logger.warning(f"Could not load image from input: {image_input!r}")
             return None
@@ -242,46 +236,52 @@ class VisualAnalyzer:
             temperature=0.2,
         )
 
-        try:
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=contents,  # type: ignore[arg-type]
-                config=config,
-            )
+        last_exc: Exception | None = None
+        for candidate_model in dict.fromkeys(
+            [self.model_name, "gemini-3.7-flash", "gemini-3.6-flash"]
+        ):
+            try:
+                response = client.models.generate_content(
+                    model=candidate_model,
+                    contents=contents,  # type: ignore[arg-type]
+                    config=config,
+                )
 
-            # Record telemetry in accumulator if provided
-            if self.accumulator is not None:
-                try:
-                    self.accumulator.add_call(
-                        response,
-                        model=self.model_name,
-                        key_tag="gemini_visual_analysis",
-                    )
-                except Exception as exc:
-                    logger.debug(f"Cost tracking skipped for visual analysis: {exc}")
+                # Record telemetry in accumulator if provided
+                if self.accumulator is not None:
+                    try:
+                        self.accumulator.add_call(
+                            response,
+                            model=candidate_model,
+                            key_tag="gemini_visual_analysis",
+                        )
+                    except Exception as exc:
+                        logger.debug(f"Cost tracking skipped for visual analysis: {exc}")
 
-            # Extract structured response
-            if hasattr(response, "parsed") and isinstance(response.parsed, VisualAnalysis):
-                return response.parsed
+                # Extract structured response
+                if hasattr(response, "parsed") and isinstance(response.parsed, VisualAnalysis):
+                    return response.parsed
 
-            # Fallback to parsing text
-            raw_text = getattr(response, "text", "") or ""
-            if raw_text:
-                data = json.loads(raw_text)
-                return VisualAnalysis.model_validate(data)
+                # Fallback to parsing text
+                raw_text = getattr(response, "text", "") or ""
+                if raw_text:
+                    data = json.loads(raw_text)
+                    return VisualAnalysis.model_validate(data)
 
-            return deduce_native_analysis(
-                visual_matches=visual_matches,
-                knowledge_graph=knowledge_graph,
-                ocr_text=ocr_text,
-            )
+                # Empty (non-error) response — no value in retrying other models
+                break
 
-        except Exception as exc:
-            logger.warning(
-                f"Gemini visual analysis failed ({exc}); falling back to native deduction."
-            )
-            return deduce_native_analysis(
-                visual_matches=visual_matches,
-                knowledge_graph=knowledge_graph,
-                ocr_text=ocr_text,
-            )
+            except Exception as exc:
+                last_exc = exc
+                logger.debug(
+                    f"Gemini visual analysis failed on {candidate_model} ({exc}); trying next if available."
+                )
+
+        logger.warning(
+            f"Gemini visual analysis failed ({last_exc}); falling back to native deduction."
+        )
+        return deduce_native_analysis(
+            visual_matches=visual_matches,
+            knowledge_graph=knowledge_graph,
+            ocr_text=ocr_text,
+        )

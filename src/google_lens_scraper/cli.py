@@ -21,7 +21,7 @@ from . import _pro
 from .client import LensScraper
 from .config import LensConfig
 from .exceptions import LensError, LensRateLimitError
-from .models import EnrichedCommerceMatch, StockStatus
+from .models import EnrichedCommerceMatch, MatchRelevance
 from .parser import PROG_NAME
 from .session import SessionManager
 
@@ -41,44 +41,39 @@ def _require_pro() -> None:
 def _build_commerce_table(title: str, items: list[EnrichedCommerceMatch]) -> Table:
     """Builds the shared Rich table layout used for both preview and full commerce listings."""
     table = Table(title=title)
-    table.add_column("Score", style="bold green", justify="right", width=6)
-    table.add_column("Type", style="bold cyan", width=12)
-    table.add_column("Brand", style="yellow", width=12)
-    table.add_column("SKU", style="dim", width=12)
-    table.add_column("Title", style="bold white", max_width=30)
-    table.add_column("Price", style="bold green", width=12)
-    table.add_column("Stock", style="magenta", width=12)
-    table.add_column("Condition", style="blue", width=10)
-    table.add_column("Merchant", style="cyan", width=14)
-    table.add_column("Clean URL", style="blue", max_width=40)
+    table.add_column("Match Score", style="bold green", justify="right", min_width=11, no_wrap=True)
+    table.add_column("AI Eval", style="bold yellow", min_width=10, no_wrap=True)
+    table.add_column("Brand", style="yellow", min_width=8, max_width=14)
+    table.add_column("Title", style="bold white", min_width=20, max_width=32)
+    table.add_column("Price", style="bold green", min_width=10, no_wrap=True)
+    table.add_column("Merchant", style="cyan", min_width=10, max_width=16)
+    table.add_column("Clean URL", style="blue", min_width=18, max_width=40)
 
     for item in items:
         price_str = (
             f"{item.price.amount:.2f} {item.price.currency}" if item.price else "[dim]—[/dim]"
         )
-        if item.stock_status == StockStatus.IN_STOCK:
-            stock_str = "[bold green]in_stock[/bold green]"
-        elif item.stock_status == StockStatus.OUT_OF_STOCK:
-            stock_str = "[bold red]out_of_stock[/bold red]"
-        elif item.stock_status == StockStatus.PREORDER:
-            stock_str = "[bold yellow]preorder[/bold yellow]"
+        rel = item.relevance
+        if rel == MatchRelevance.EXACT_MATCH:
+            rel_str = "[bold green]🎯 Exact[/bold green]"
+        elif rel == MatchRelevance.SIMILAR:
+            rel_str = "[cyan]🔄 Similar[/cyan]"
+        elif rel == MatchRelevance.REFERENCE:
+            rel_str = "[dim]📄 Ref[/dim]"
+        elif rel == MatchRelevance.UNRELATED:
+            rel_str = "[dim red]🚫 Noise[/dim red]"
         else:
-            stock_str = "[dim]—[/dim]"
+            rel_str = "[dim]—[/dim]"
 
-        cond_str = f"[cyan]{item.condition.value}[/cyan]" if item.condition else "[dim]—[/dim]"
         brand_str = item.brand if item.brand else "[dim]—[/dim]"
-        sku_str = item.sku if item.sku else "[dim]—[/dim]"
         merchant_str = item.merchant_name or "[dim]—[/dim]"
 
         table.add_row(
             f"{item.match_score}%",
-            item.page_type.value,
+            rel_str,
             brand_str,
-            sku_str,
-            item.title[:30],
+            item.title[:32],
             price_str,
-            stock_str,
-            cond_str,
             merchant_str,
             item.direct_url[:40],
         )
@@ -499,11 +494,19 @@ def search_cmd(
                 console.print(
                     "\n[bold magenta]✨ Google Lens Pro — Resale & Pricing Intelligence[/bold magenta]"
                 )
-                sum_table = Table(title="Market Pricing Analytics")
+                title_suffix = f": {s.target_product}" if s.target_product else ""
+                sum_table = Table(
+                    title=f"Market Pricing Analytics (Verified Listings{title_suffix})"
+                )
                 sum_table.add_column("Metric", style="bold cyan")
                 sum_table.add_column("Value", style="bold white")
+                if s.target_product:
+                    sum_table.add_row(
+                        "Identified Target Product",
+                        f"[bold yellow]{s.target_product}[/bold yellow]",
+                    )
                 sum_table.add_row("Total Analyzed Listings", str(s.total_matches))
-                sum_table.add_row("Priced Listings", str(s.total_priced_matches))
+                sum_table.add_row("Verified Priced Listings", str(s.total_priced_matches))
                 if s.min_price is not None:
                     sum_table.add_row("Lowest Market Price", f"{s.min_price:.2f} {s.currency}")
                 if s.max_price is not None:
@@ -635,13 +638,23 @@ def search_cmd(
             cost_info = c_dict.get("cost_usd", {})
             tokens_info = c_dict.get("tokens", {})
             total_cost = cost_info.get("total", 0.0)
+            what_if = cost_info.get("what_if_paid")
+            tier = c_dict.get("billing_tier", "unknown")
             total_tokens = tokens_info.get("total", 0)
             prompt_tokens = tokens_info.get("prompt", 0)
             output_tokens = tokens_info.get("output", 0)
             calls_cnt = c_dict.get("calls_count", 1)
 
+            label = "💰 Total AI Cost:" if tier in ("free", "paid") else "💰 Estimated AI Cost:"
+            if tier == "free":
+                tier_badge = f" [cyan](Free Tier • ${what_if:.5f} if paid)[/cyan]"
+            elif tier == "paid":
+                tier_badge = " [dim](Paid Tier)[/dim]"
+            else:
+                tier_badge = " [dim](List Price • $0.00 if Free Tier)[/dim]"
+
             console.print(
-                f"\n[bold green]💰 Total AI Cost:[/bold green] [bold white]${total_cost:.5f} USD[/bold white] "
+                f"\n[bold green]{label}[/bold green] [bold white]${total_cost:.5f} USD[/bold white]{tier_badge} "
                 f"[dim]({calls_cnt} call{'s' if calls_cnt > 1 else ''} | {total_tokens:,} tokens: {prompt_tokens:,} prompt / {output_tokens:,} output)[/dim]"
             )
 
@@ -890,38 +903,62 @@ def activate_cmd(key: str | None = None, key_opt: str | None = None) -> None:
 
 @cli.command(name="setup-ai")
 @click.option("--key", help="Google AI Studio Gemini API key")
+@click.option(
+    "--tier",
+    type=click.Choice(["unknown", "free", "paid"], case_sensitive=False),
+    help="Gemini billing tier: 'unknown' (dynamic list price), 'free' (AI Studio), or 'paid' (GCP Pay-as-you-go)",
+)
 @click.option("--status", is_flag=True, help="Display the current configured Gemini API key status")
-def setup_ai_cmd(key: str | None, status: bool = False) -> None:
-    """Configure a Google AI Studio API key for Nano Banana Pro 8K packshots."""
-    from .settings import get_gemini_api_key, set_gemini_api_key
+def setup_ai_cmd(key: str | None, tier: str | None = None, status: bool = False) -> None:
+    """Configure a Google AI Studio API key and billing tier for multimodal intelligence."""
+    from .settings import (
+        get_gemini_api_key,
+        get_gemini_billing_tier,
+        set_gemini_api_key,
+        set_gemini_billing_tier,
+    )
+
+    def _mask(k: str) -> str:
+        return k[:6] + "..." + k[-4:]
+
+    def _tier_label(t: str) -> str:
+        if t == "unknown":
+            return "UNKNOWN (Calculated at standard Google Cloud list rates)"
+        return t.upper()
 
     current = get_gemini_api_key()
+    current_tier = get_gemini_billing_tier()
+
     if status:
         if current:
-            masked = current[:6] + "..." + current[-4:]
-            console.print(f"Current Gemini API key: [cyan]{masked}[/cyan]")
+            console.print(f"Current Gemini API key: [cyan]{_mask(current)}[/cyan]")
         else:
             console.print("[dim]No Gemini API key currently configured.[/dim]")
+        console.print(f"Billing tier: [yellow]{_tier_label(current_tier)}[/yellow]")
         return
+
+    if tier:
+        set_gemini_billing_tier(tier)
+        console.print(f"[bold green]✓ Set Gemini billing tier to '{tier}'.[/bold green]")
 
     if key:
         set_gemini_api_key(key)
         console.print("[bold green]✓ Saved Gemini API key to local config.[/bold green]")
-        return
 
-    if current:
-        masked = current[:6] + "..." + current[-4:]
-        console.print(f"Current Gemini API key: [cyan]{masked}[/cyan]")
+    if not key and not tier:
+        if current:
+            console.print(f"Current Gemini API key: [cyan]{_mask(current)}[/cyan]")
+            console.print(f"Billing tier: [yellow]{_tier_label(current_tier)}[/yellow]")
 
-    console.print(
-        "Get a free Google AI Studio key at: [underline blue]https://aistudio.google.com/app/apikey[/underline blue]"
-    )
-    entered = click.prompt(
-        "Enter new Gemini API key (or leave empty to keep current)", default="", hide_input=True
-    )
-    if entered and entered.strip():
-        set_gemini_api_key(entered.strip())
-        console.print("[bold green]✓ Gemini API key updated successfully.[/bold green]")
+        console.print(
+            "Get a free Google AI Studio key at: [underline blue]https://aistudio.google.com/app/apikey[/underline blue]"
+        )
+        entered = click.prompt(
+            "Enter new Gemini API key (or leave empty to keep current)", default="", hide_input=True
+        )
+        if entered and entered.strip():
+            set_gemini_api_key(entered.strip())
+            console.print("[bold green]✓ Gemini API key updated successfully.[/bold green]")
 
 
 @license_group.command(name="buy")

@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from collections.abc import Sequence
+from typing import Any
 
 from .models import ModelPricing
 
@@ -281,7 +282,7 @@ class PricingRegistry:
 
     def load_from_json(self, json_data_or_path: str) -> None:
         """Loads custom pricing overrides from a JSON string or file path."""
-        data: dict[str, dict]
+        data: dict[str, dict[str, Any]]
         if os.path.exists(json_data_or_path):
             with open(json_data_or_path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -289,25 +290,39 @@ class PricingRegistry:
             data = json.loads(json_data_or_path)
 
         for model_id, rates in data.items():
+            input_val = rates.get("input_rate_base")
+            if input_val is None:
+                input_val = rates.get("input", 0.0)
+
+            output_val = rates.get("output_rate_base")
+            if output_val is None:
+                output_val = rates.get("output", 0.0)
+
+            tier_tokens_val = rates.get("tier_threshold_tokens", 128000)
+
             pricing = ModelPricing(
                 model_id=model_id,
-                input_rate_base=float(rates.get("input_rate_base", rates.get("input", 0.0))),
+                input_rate_base=float(input_val if input_val is not None else 0.0),
                 input_rate_tier2=float(rates["input_rate_tier2"])
-                if "input_rate_tier2" in rates
+                if "input_rate_tier2" in rates and rates["input_rate_tier2"] is not None
                 else None,
-                tier_threshold_tokens=int(rates.get("tier_threshold_tokens", 128000)),
-                output_rate_base=float(rates.get("output_rate_base", rates.get("output", 0.0))),
+                tier_threshold_tokens=int(
+                    tier_tokens_val if tier_tokens_val is not None else 128000
+                ),
+                output_rate_base=float(output_val if output_val is not None else 0.0),
                 output_rate_tier2=float(rates["output_rate_tier2"])
-                if "output_rate_tier2" in rates
+                if "output_rate_tier2" in rates and rates["output_rate_tier2"] is not None
                 else None,
                 cached_read_rate=float(rates["cached_read_rate"])
-                if "cached_read_rate" in rates
+                if "cached_read_rate" in rates and rates["cached_read_rate"] is not None
                 else None,
-                search_grounding_rate_per_1k=float(rates.get("search_grounding_rate_per_1k", 35.0)),
+                search_grounding_rate_per_1k=float(
+                    rates.get("search_grounding_rate_per_1k") or 35.0
+                ),
                 is_embedding=bool(rates.get("is_embedding", False)),
-                text_embedding_rate=float(rates.get("text_embedding_rate", 0.0)),
-                image_embedding_rate=float(rates.get("image_embedding_rate", 0.0)),
-                audio_embedding_rate=float(rates.get("audio_embedding_rate", 0.0)),
+                text_embedding_rate=float(rates.get("text_embedding_rate") or 0.0),
+                image_embedding_rate=float(rates.get("image_embedding_rate") or 0.0),
+                audio_embedding_rate=float(rates.get("audio_embedding_rate") or 0.0),
             )
             aliases = rates.get("aliases", [])
             self.register_model(pricing, aliases=aliases)

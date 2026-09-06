@@ -36,12 +36,14 @@ def _create_sample_image_bytes() -> bytes:
 class TestVisualAnalyzer:
     def test_analyzer_not_available_without_api_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.setattr("google_lens_scraper.ai_analyzer.get_gemini_api_key", lambda: None)
         analyzer = VisualAnalyzer(api_key=None)
         assert not analyzer.is_available
         assert analyzer.analyze(_create_sample_image()) is None
 
     def test_analyzer_zero_key_native_deduction(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.setattr("google_lens_scraper.ai_analyzer.get_gemini_api_key", lambda: None)
         analyzer = VisualAnalyzer(api_key=None)
         assert not analyzer.is_available
         matches = [VisualMatch(title="Nike Free RN Flyknit 2017 - 880843 006 | GOAT", price="$120")]
@@ -112,6 +114,7 @@ class TestVisualAnalyzer:
 class TestStudioSynthesizer:
     def test_synthesizer_not_available_without_api_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.setattr("google_lens_scraper.ai_studio.get_gemini_api_key", lambda: None)
         synthesizer = StudioSynthesizer(api_key=None)
         assert not synthesizer.is_available
         assert synthesizer.generate(_create_sample_image()) is None

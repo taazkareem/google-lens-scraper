@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-09-06
+
+### Added
+- **Category-Agnostic AI Match Evaluation**: Replaced hardcoded category stop words and regexes with pure English grammatical particles. Bundled candidate match evaluations directly into Gemini 3.8 Flash's single multimodal analysis call, providing universal semantic classification (`exact_match`, `similar`, `reference`, `unrelated`) and human-readable reasoning (`ai_evaluation.reason`) across all product verticals (luxury watches, consumer electronics, footwear, apparel, furniture, tools, collectibles).
+- **Clean Data Provenance Hierarchy**: Established a clear structural separation between scraped web facts (`match_score`, `price`, `page_type`, `brand`, `sku`, `merchant_name`, `direct_url`) and AI analytical judgments (`ai_evaluation: { "relevance", "reason" }`).
+- **Contextual Target Product in Market Summary**: Added `CommerceSummary.target_product` to record the identified product that listings are evaluated against, displayed in both JSON export and CLI analytics tables.
+- **Native Async Enrichment Pipeline (`enrich_async`)**: Added `enrich_async()` in `_pro.py` and `CommerceEnricher.process_async()`, allowing asynchronous applications to perform full e-commerce enrichment and pricing analytics without blocking the event loop.
+- **Dynamic Gemini Billing Tiers & Cost Calculator**: Added `google-lens setup-ai --tier [unknown|free|paid]` to configure account-specific billing tiers with automatic token cost computation.
+
+### Changed
+- **CLI Table Layout & Alignment**: Streamlined `_build_commerce_table` to 7 high-signal columns (`Match Score`, `AI Eval`, `Brand`, `Title`, `Price`, `Merchant`, `Clean URL`), setting `min_width` and `no_wrap` to prevent column squishing and header collapsing in standard-width terminals.
+- **JSON Serialization Cleanliness**: Added `exclude=True` to `VisualAnalysis.match_evaluations` so internal candidate schemas operate during generation while omitting the redundant 100-line detached index array from final `export.json`.
+- **Backward Compatibility**: Added `@property` and `@relevance.setter` on `EnrichedCommerceMatch` with a Pydantic `model_validator(mode="before")` so existing code accessing or passing `item.relevance` continues to work seamlessly.
+
+### Fixed
+- **Type-Narrowing in Pricing Registry**: Fixed possible `NoneType` numeric conversion errors in `PricingRegistry.load_from_json()` when parsing custom JSON pricing overrides.
+
 ## [0.1.3] - 2026-09-05
 
 ### Fixed

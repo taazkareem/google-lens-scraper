@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from .core import calculate_cost
 from .models import (
+    BillingTier,
     GeminiCostBreakdown,
     GeminiUsageRecord,
     ModalityBreakdown,
@@ -21,7 +22,7 @@ class UsageAccumulator:
     def __init__(
         self,
         default_model: str = "gemini-3.7-flash",
-        billing_tier: Literal["paid", "free"] = "paid",
+        billing_tier: BillingTier = "unknown",
         pricing_registry: PricingRegistry | None = None,
     ) -> None:
         self.default_model = default_model
@@ -35,7 +36,7 @@ class UsageAccumulator:
         model: str | None = None,
         duration_seconds: float = 0.0,
         key_tag: str | None = None,
-        billing_tier: Literal["paid", "free"] | None = None,
+        billing_tier: BillingTier | None = None,
         is_batch: bool = False,
         search_queries: int = 0,
     ) -> GeminiUsageRecord:
@@ -88,9 +89,9 @@ class UsageAccumulator:
         out_mod_video = sum(r.output_modality_details.video_tokens for r in self._records)
         out_mod_audio = sum(r.output_modality_details.audio_tokens for r in self._records)
 
-        # If any record was paid, summary tracks paid
         any_paid = any(r.billing_tier == "paid" for r in self._records)
-        summary_tier: Literal["paid", "free"] = "paid" if any_paid else "free"
+        any_unknown = any(r.billing_tier == "unknown" for r in self._records)
+        summary_tier: BillingTier = "paid" if any_paid else ("unknown" if any_unknown else "free")
 
         # If multiple models were called, tag with primary/default model
         dominant_model = self._records[0].model if len(self._records) == 1 else self.default_model
@@ -194,6 +195,7 @@ class UsageAccumulator:
             # High precision unrounded cost for this group
             cost = calculate_cost(
                 grouped_record,
+                billing_tier=b_tier,
                 pricing_registry=self.pricing_registry,
                 precision=None,
             )
@@ -242,6 +244,21 @@ class UsageAccumulator:
         cost = self.get_total_cost(precision=precision)
         keys_used = list({r.key_tag for r in self._records if r.key_tag})
 
+        cost_usd_dict: dict[str, Any] = {
+            "prompt_uncached": cost.prompt_cost_usd,
+            "prompt_cached": cost.cached_cost_usd,
+            "output": cost.output_cost_usd,
+            "thinking": cost.thinking_cost_usd,
+            "grounding": cost.grounding_cost_usd,
+            "total": cost.total_cost_usd,
+        }
+        if summary.billing_tier == "free":
+            cost_usd_dict["what_if_paid"] = cost.what_if_paid_cost_usd
+        elif summary.billing_tier == "unknown":
+            cost_usd_dict["tier_notes"] = (
+                "Calculated at standard Google Cloud list rates ($0.00 actual spend if using a free-tier key)"
+            )
+
         return {
             "model": summary.model,
             "calls_count": summary.calls_count,
@@ -258,15 +275,7 @@ class UsageAccumulator:
                     "audio": summary.modality_details.audio_tokens,
                 },
             },
-            "cost_usd": {
-                "prompt_uncached": cost.prompt_cost_usd,
-                "prompt_cached": cost.cached_cost_usd,
-                "output": cost.output_cost_usd,
-                "thinking": cost.thinking_cost_usd,
-                "grounding": cost.grounding_cost_usd,
-                "total": cost.total_cost_usd,
-                "what_if_paid": cost.what_if_paid_cost_usd,
-            },
+            "cost_usd": cost_usd_dict,
             "duration_seconds": round(summary.duration_seconds, 3),
             "billing_tier": summary.billing_tier,
             "keys_used": keys_used,

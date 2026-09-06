@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, get_args
+
+BillingTier = Literal["paid", "free", "unknown"]
+BILLING_TIERS: tuple[str, ...] = get_args(BillingTier)
 
 
 @dataclass(frozen=True)
@@ -30,7 +33,7 @@ class GeminiUsageRecord:
     total_tokens: int = 0
     search_queries: int = 0
     is_batch: bool = False
-    billing_tier: Literal["paid", "free"] = "paid"
+    billing_tier: BillingTier = "unknown"
     key_tag: str | None = None
     modality_details: ModalityBreakdown = field(default_factory=ModalityBreakdown)
     # Breakdown of output_tokens by modality (e.g. image-generation models bill

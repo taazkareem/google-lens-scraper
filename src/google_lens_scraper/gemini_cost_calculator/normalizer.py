@@ -3,9 +3,9 @@ from __future__ import annotations
 import contextlib
 import json
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any
 
-from .models import GeminiUsageRecord, ModalityBreakdown
+from .models import BillingTier, GeminiUsageRecord, ModalityBreakdown
 
 
 def _get_val(obj: Any, *keys: str, default: Any = None) -> Any:
@@ -65,7 +65,7 @@ def parse_modality_details(raw_details: Any) -> ModalityBreakdown:
 def normalize_usage(
     response_or_usage: Any,
     model: str | None = None,
-    billing_tier: Literal["paid", "free"] = "paid",
+    billing_tier: BillingTier = "unknown",
     is_batch: bool = False,
     key_tag: str | None = None,
     duration_seconds: float = 0.0,

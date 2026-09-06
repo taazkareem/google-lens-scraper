@@ -40,6 +40,8 @@ from .gemini_cost_calculator.accumulator import UsageAccumulator
 from .models import KnowledgeGraph, LensSearchResult, VisualMatch
 from .parser import LensParser
 from .protobuf_engine import ProtobufEngine
+from .relevance import process_commerce_relevance
+from .settings import get_gemini_billing_tier
 
 
 class LensScraper:
@@ -206,17 +208,29 @@ class LensScraper:
         if enrich:
             res = _pro.enrich(res)
 
-        accumulator = UsageAccumulator(default_model="gemini-3.8-flash")
+        accumulator = UsageAccumulator(
+            default_model="gemini-3.8-flash",
+            billing_tier=get_gemini_billing_tier(),
+        )
 
         if analyze:
             analyzer = VisualAnalyzer(accumulator=accumulator)
-            if analyzer.is_available:
-                res.analysis = analyzer.analyze(
-                    image_input=query,
-                    visual_matches=res.visual_matches,
-                    knowledge_graph=res.knowledge_graph,
-                    ocr_text=res.ocr_text,
-                )
+            res.analysis = analyzer.analyze(
+                image_input=query,
+                visual_matches=res.visual_matches,
+                knowledge_graph=res.knowledge_graph,
+                ocr_text=res.ocr_text,
+            )
+
+        if res.commerce:
+            res.commerce = process_commerce_relevance(
+                res.commerce,
+                res.analysis,
+                visual_matches=res.visual_matches,
+                knowledge_graph=res.knowledge_graph,
+                ocr_text=res.ocr_text,
+            )
+            res.analysis = res.analysis or res.commerce.analysis
 
         if studio:
             synthesizer = StudioSynthesizer(accumulator=accumulator)
@@ -229,6 +243,8 @@ class LensScraper:
 
         if accumulator.get_records():
             res.cost = accumulator.to_dict()
+            if res.commerce:
+                res.commerce.cost = res.cost
 
         return res
 

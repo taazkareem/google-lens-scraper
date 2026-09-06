@@ -9,6 +9,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from ._image import load_image
 from .gemini_cost_calculator.accumulator import UsageAccumulator
 from .models import GeneratedStudioAsset
 from .settings import get_gemini_api_key
@@ -23,20 +24,6 @@ DEFAULT_STUDIO_PROMPT = (
     "professional e-commerce catalog photography, 50mm macro lens, f/8, photorealistic textures, "
     "subtle soft shadow beneath product, isolated clean framing."
 )
-
-
-def _load_image(image_input: str | Path | bytes | Image.Image) -> Image.Image | None:
-    """Loads an image into a PIL Image instance."""
-    if isinstance(image_input, Image.Image):
-        return image_input
-    if isinstance(image_input, (str, Path)):
-        p = Path(image_input)
-        if p.exists() and p.is_file():
-            return Image.open(p)
-        return None
-    if isinstance(image_input, bytes):
-        return Image.open(io.BytesIO(image_input))
-    return None
 
 
 class StudioSynthesizer:
@@ -69,7 +56,7 @@ class StudioSynthesizer:
             logger.warning("Gemini API key not configured; cannot synthesize studio assets.")
             return None
 
-        pil_image = _load_image(image_input)
+        pil_image = load_image(image_input)
         if pil_image is None:
             logger.warning(f"Could not load reference image from: {image_input!r}")
             return None
