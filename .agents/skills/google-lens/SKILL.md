@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Python 3.10+ and google-lens-scraper package
 metadata:
   author: taazkareem
-  version: "0.1.3"
+  version: "0.1.4"
 ---
 
 # Google Lens Agent Skill
@@ -56,11 +56,17 @@ google-lens search "<image-url-or-path>" --ocr-only --json-output
 ```
 
 ### 4. E-Commerce & Resale Arbitrage Intelligence (Pro)
-To resolve clean canonical URLs, normalized price ranges (min/max/average), and identify the lowest-priced verified seller ("Best Deal"):
+To resolve clean canonical URLs, normalized price ranges (min/max/average), semantic match relevance, and identify the lowest-priced verified seller ("Best Deal"):
 
 ```bash
 google-lens search "<image-url-or-path>" --enrich --json-output
 ```
+
+Pro enrichment categorizes candidates against the identified `target_product` using Gemini 3.8 Flash into universal semantic classes:
+- `exact_match`: Exact physical product match (eligible for price comparison and Best Deal).
+- `similar`: Same silhouette, competing brand, or variant edition.
+- `reference`: Blog reviews, worksheets, wallpapers, or editorial context.
+- `unrelated`: Incompatible accessories, third-party parts, or SERP noise.
 
 To export enriched commerce data directly to clean JSON:
 ```bash
@@ -108,14 +114,21 @@ google-lens pro status
 google-lens pro deactivate
 ```
 
-### 7. Google AI Studio Key (Optional, For --studio Only)
+### 7. Google AI Studio Key & Billing Tier (Optional)
 Google Lens Scraper does **not** require any Gemini API key for regular searches or product attributes—those are deduced natively from Lens metadata with zero friction.
 
-To synthesize 8K AI studio packshots (`--studio`), configure your key once:
+To synthesize 8K AI studio packshots (`--studio`) or run deep multimodal attributes, configure your key:
 ```bash
 google-lens setup-ai --key "<your-gemini-api-key>"
 # Or set environment variable:
 export GEMINI_API_KEY="<your-gemini-api-key>"
+```
+
+Configure your billing tier (`unknown`, `free`, or `paid`) for exact USD cost accounting:
+```bash
+google-lens setup-ai --tier paid
+# Or set environment variable:
+export GEMINI_BILLING_TIER="paid"
 ```
 
 ### 8. Session Status & Google Authentication
@@ -181,6 +194,29 @@ When `--json-output` is used, the JSON payload follows this structure:
     "subtitle": "Classification (e.g. Footwear / Plant)",
     "description": "Brief encyclopedic description",
     "website": "https://..."
+  },
+  "commerce": {
+    "summary": {
+      "target_product": "Nike Free RN Flyknit 2017",
+      "min_price": 120.0,
+      "max_price": 120.0,
+      "avg_price": 120.0,
+      "currency": "USD",
+      "total_matches": 69,
+      "total_priced_matches": 1
+    },
+    "items": [
+      {
+        "title": "Nike Free RN Flyknit 2017",
+        "direct_url": "https://www.goat.com/sneakers/free-rn-flyknit-2017-880843-006",
+        "match_score": 97,
+        "relevance": "exact_match",
+        "relevance_reason": "Direct marketplace listing for identical silhouette.",
+        "page_type": "product",
+        "price": { "raw": "120.00 USD", "amount": 120.0, "currency": "USD" },
+        "merchant_name": "GOAT"
+      }
+    ]
   },
   "visual_matches": [
     {

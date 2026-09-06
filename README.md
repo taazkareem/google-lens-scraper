@@ -49,6 +49,7 @@
 - **Dual-Engine Architecture**:
   - **Fast-Path Protobuf Engine**: Uses Chromium's native internal endpoint (`v1/crupload`) for sub-second, zero-browser image uploads, session token generation (`gsessionid` / `lsessionid`), and full-text OCR.
   - **Stealth Browser Engine**: Powered by Patchright (undetected Chromium driver) for complete visual matches, thumbnails, publisher URLs, prices, and Knowledge Graph entities.
+- **Category-Agnostic AI Match Evaluation**: Bundled candidate evaluations classify matches into `exact_match`, `similar`, `reference`, or `unrelated` with human-readable rationale (`relevance_reason`) and automatically identify the target product (`target_product`) across luxury goods, electronics, fashion, and collectibles.
 - **Zero-Friction Agent Fallback**: Works natively without an API key! If `GEMINI_API_KEY` is not present, the bundled Agent Skill directs host LLMs to analyze attributes in-context.
 - **Nano Banana Pro 8K Studio Generation**: Pass `--studio` to synthesize isolated commercial catalog packshots to disk.
 - **Permanent Session Authentication**:
@@ -60,7 +61,7 @@
   - Injected session cookies (`SOCS`, `CONSENT`, `SID`, `HSID`).
   - Persistent browser profiles (`user_data_dir`) and Chrome DevTools Protocol (`cdp_url`).
   - HTTP & SOCKS5 proxy support.
-- **Dual Synchronous & Asynchronous APIs**: `LensScraper` and `AsyncLensScraper`.
+- **Dual Synchronous & Asynchronous APIs**: `LensScraper` and `AsyncLensScraper` with native concurrent destination enrichment (`enrich_async`).
 - **Command-Line Interface**: `google-lens` CLI for quick searches, OCR, and session management.
 - **Agent Skill Integration**: Built-in open-standard Agent Skill conforming to [agentskills.io](https://agentskills.io) for VS Code Copilot, Claude Code, Cursor, Codex, and Gemini CLI.
 
@@ -153,6 +154,8 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 8. **🏪 Merchant Categorization**: Labels sellers as Official Brand stores (e.g. Nike, Apple), Major Marketplaces (Amazon, eBay, Walmart), or Resellers (StockX, GOAT, Chrono24).
 9. **📁 Clean JSON-First Data Pipelines**: Direct `--export-json` (or `--export`) flag for developer-grade hierarchical data without sparse, inconsistent CSV columns or `null` noise.
 10. **⚡ Multi-Device Activations**: Authorize up to 3 machines simultaneously via CLI (`google-lens pro activate <key>`) or purchase directly (`google-lens buy pro`) with self-service license management in the Polar customer portal.
+11. **🎯 Category-Agnostic Semantic Match Evaluation (`relevance`)**: Separates exact product matches from accessories, lookalikes, and unrelated SERP noise (`exact_match`, `similar`, `reference`, `unrelated`) with transparent, human-readable rationale (`relevance_reason`).
+12. **🏷️ Target Product Identification (`target_product`)**: Automatically detects the canonical item name and silhouette from visual cues and metadata, anchoring all price comparison and match score analytics.
 
 ---
 
@@ -173,6 +176,7 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 | **Title Cleaning & Normalization** | Raw search snippet | ✅ Clean titles (cures "Read more") | ❌ Raw snippet only | ❌ None |
 | **Price Comparison & Best Deal** | 🔒 1-Item Teaser Preview | ✅ Full Min/Max/Avg + Best Deal | ❌ Raw unparsed strings | ❌ None |
 | **Merchant Categorization** | 🔒 1-Item Teaser Preview | ✅ Brand vs Marketplace vs Reseller | ❌ No | ❌ No |
+| **AI Semantic Match Evaluation** | 🔒 1-Item Teaser Preview | ✅ Category-Agnostic Gemini 3.8 Flash (`relevance`) | ❌ None (SERP only) | ❌ None |
 | **JSON Data Pipeline Export** | 🔒 Teaser Only | ✅ Full `--export-json` | ⚠️ Extra export fees | ❌ Custom code required |
 | **Product Attribute Extraction** | ✅ Native Zero-Key Deduction | ✅ Native + Gemini 3.8 Flash | ❌ None | ❌ None |
 | **8K Studio Packshots (`--studio`)** | ✅ Nano Banana Pro (w/ AI key) | ✅ Nano Banana Pro (w/ API key) | ❌ None | ❌ None |
@@ -320,7 +324,7 @@ for obj in result.detected_objects:
     print("Object:", obj.id, obj.bounding_box)
 ```
 
-### 3. Asynchronous Search
+### 3. Asynchronous Search (AsyncIO + Concurrent Pro Enrichment)
 
 ```python
 import asyncio
@@ -331,8 +335,18 @@ async def main():
     scraper = AsyncLensScraper(headless=True)
     result = await scraper.search("https://example.com/watch.jpg")
 
+    # Visual match items
     for match in result.visual_matches:
         print(f"[{match.source}] {match.title} -> {match.link}")
+
+    # Pro commerce intelligence (async destination enrichment & relevance)
+    if result.commerce:
+        print(f"\nTarget Product: {result.commerce.summary.target_product}")
+        for match in result.commerce.items:
+            rel = f"[{match.relevance.value}]" if match.relevance else ""
+            print(
+                f"- {match.title} | {match.price.raw if match.price else 'N/A'} {rel} -> {match.direct_url}"
+            )
 
 
 asyncio.run(main())
@@ -428,10 +442,15 @@ google-lens pro deactivate
 google-lens image.jpg --export-json deals.json
 
 # -------------------------------------------------------------
-# 4. AI Studio (Optional 8K Packshots)
+# 4. AI Studio & Gemini Configuration
 # -------------------------------------------------------------
-# Optional: Configure Google AI Studio key (only needed for 8K --studio packshots)
+# Configure Google AI Studio key (optional, for --studio packshots & deep attributes)
 google-lens setup-ai --key "<your-gemini-api-key>"
+
+# Configure billing tier for exact cost accounting (unknown, free, or paid)
+google-lens setup-ai --tier paid       # Or: --tier free / --tier unknown
+
+# Check AI Studio key and tier status
 google-lens setup-ai --status
 
 # Generate 8K commercial studio packshot via Nano Banana Pro
@@ -466,10 +485,11 @@ class LensSearchResult(BaseModel):
 
 ### Core Sub-Models:
 - **`VisualMatch`**: `title`, `link`, `thumbnail`, `source`, `price`.
-- **`CommerceIntelligence` (Pro)**: `summary` (min/max/average price across listings), `products` (verified product matches with clean pricing, stock, condition, and SKU), `items` (all matches classified by `page_type`), `best_deal` (lowest-price verified seller).
+- **`CommerceIntelligence` (Pro)**: `summary` (`target_product`, min/max/average price across verified listings, currency, `best_deal`), `items` (all matches classified by `page_type`, `match_score`, and semantic `relevance`), `products` (filtered commercial listings), `is_preview`.
+- **`EnrichedCommerceMatch` (Pro)**: `title`, `direct_url` (unwrapped clean canonical URL), `price` (`raw`, `amount`, `currency`), `merchant_name`, `merchant_category`, `thumbnail`, `match_score` (0-100% token overlap), `relevance` (`exact_match`, `similar`, `reference`, `unrelated`), `relevance_reason`, `page_type`, `brand`, `sku`, `condition`, `stock_status`, `in_stock`.
 - **`VisualAnalysis`**: `summary`, `attributes` (`brand`, `model_or_name`, `category`, `color`, `materials`, `condition_assessment`, `authenticity_markers`, `confidence_score`), `resale_recommendation`, `tags`.
 - **`GeneratedStudioAsset`**: `image_path` (saved 8K file), `prompt_used`, `aspect_ratio`, `model`.
-- **`Cost Telemetry`**: `tokens.total`, `tokens.prompt`, `tokens.output`, `cost_usd.total`.
+- **`Cost Telemetry`**: `tokens.total`, `tokens.prompt`, `tokens.output`, `cost_usd.total`, `billing_tier`.
 
 ---
 

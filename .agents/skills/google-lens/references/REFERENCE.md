@@ -58,6 +58,13 @@ Exports and installs this Agent Skill into any local project or global agent dir
 - `--claude`: Installs to Claude Code directory (`.claude/skills/google-lens/` or `~/.claude/skills/google-lens/`).
 - `--force`, `-f`: Overwrites target directory if it already exists.
 
+### `google-lens setup-ai [OPTIONS]`
+Manages Google AI Studio Gemini API key and billing tier configuration for cost accounting.
+- `--key <str>`: Persist Gemini API key in local configuration.
+- `--tier <tier>`: Set billing tier for cost telemetry (`unknown`, `free`, or `paid`).
+- `--status`: Display current configured API key and billing tier.
+- `--clear`: Remove saved Gemini API key and reset billing tier.
+
 ---
 
 ## 2. Environment Variables
@@ -72,6 +79,8 @@ The package automatically checks the local `.env` file in the working directory 
 | `LENS_PROXY` | Proxy endpoint URL (e.g., `http://proxy.example.com:8080`). |
 | `LENS_HEADLESS` | Set to `"false"` or `"0"` to run Chromium in headed mode for visual debugging. |
 | `LENS_TIMEOUT` | Default request timeout in seconds (default: `30.0`). |
+| `GEMINI_API_KEY` | Google AI Studio API key used for 8K studio packshot generation and multimodal visual analysis. |
+| `GEMINI_BILLING_TIER` | Billing tier (`unknown`, `free`, or `paid`) for real-time USD cost accounting. |
 
 ---
 
@@ -90,6 +99,42 @@ All search results are validated by Pydantic models. Calling `.to_json()` or pas
     "subtitle": "string | null (e.g. 'Sneakers')",
     "description": "string | null",
     "website": "string | null (Entity link or Wikipedia URL)"
+  },
+  "commerce": {
+    "summary": {
+      "target_product": "string | null (Identified canonical product name)",
+      "total_matches": 69,
+      "total_priced_matches": 1,
+      "min_price": 120.0,
+      "max_price": 120.0,
+      "avg_price": 120.0,
+      "currency": "USD",
+      "best_deal": {
+        "title": "string",
+        "direct_url": "string (Clean canonical merchant URL)",
+        "price": { "raw": "$120.00", "amount": 120.0, "currency": "USD" },
+        "merchant_name": "string",
+        "match_score": 97,
+        "relevance": "exact_match",
+        "relevance_reason": "string"
+      }
+    },
+    "items": [
+      {
+        "title": "string",
+        "direct_url": "string",
+        "match_score": 97,
+        "relevance": "exact_match | similar | reference | unrelated",
+        "relevance_reason": "string | null",
+        "page_type": "product | marketplace | article | social | portfolio | uncategorized",
+        "price": { "raw": "string", "amount": 0.0, "currency": "USD" },
+        "merchant_name": "string | null",
+        "brand": "string | null",
+        "sku": "string | null",
+        "condition": "new | used | refurbished | null",
+        "stock_status": "in_stock | out_of_stock | preorder | null"
+      }
+    ]
   },
   "visual_matches": [
     {
@@ -110,7 +155,13 @@ All search results are validated by Pydantic models. Calling `.to_json()` or pas
         "height": "float (0.0 to 1.0)"
       }
     }
-  ]
+  ],
+  "cost": {
+    "model": "string",
+    "calls_count": 1,
+    "tokens": { "prompt": 450, "output": 180, "total": 630 },
+    "cost_usd": { "total": 0.001013 }
+  }
 }
 ```
 
