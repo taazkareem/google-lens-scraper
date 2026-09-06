@@ -114,9 +114,9 @@ class TestInstallSkillCLI:
 
         result = runner.invoke(cli, ["install-skill", "--dest", str(target_dir)])
         assert result.exit_code == 0, result.output
-        assert "Successfully installed google-lens Agent Skill" in result.output
+        assert "Successfully installed google-lens-pro Agent Skill" in result.output
 
-        installed_skill = target_dir / "google-lens"
+        installed_skill = target_dir / "google-lens-pro"
         assert (installed_skill / "SKILL.md").exists()
         assert (installed_skill / "references" / "REFERENCE.md").exists()
         assert (installed_skill / "scripts" / "search_image.py").exists()
@@ -124,7 +124,7 @@ class TestInstallSkillCLI:
 
     def test_install_skill_fails_without_force_when_exists(self, tmp_path: Path) -> None:
         runner = CliRunner()
-        target_dir = tmp_path / "skills" / "google-lens"
+        target_dir = tmp_path / "skills" / "google-lens-pro"
         target_dir.mkdir(parents=True)
         dummy_file = target_dir / "dummy.txt"
         dummy_file.write_text("existing", encoding="utf-8")
@@ -148,7 +148,7 @@ class TestInstallSkillCLI:
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             result = runner.invoke(cli, ["install-skill"])
             assert result.exit_code == 0
-            expected = tmp_path / ".agents" / "skills" / "google-lens"
+            expected = tmp_path / ".agents" / "skills" / "google-lens-pro"
             assert (expected / "SKILL.md").exists()
 
     def test_install_skill_claude_flag(self, tmp_path: Path) -> None:
@@ -156,7 +156,7 @@ class TestInstallSkillCLI:
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             result = runner.invoke(cli, ["install-skill", "--claude"])
             assert result.exit_code == 0
-            expected = tmp_path / ".claude" / "skills" / "google-lens"
+            expected = tmp_path / ".claude" / "skills" / "google-lens-pro"
             assert (expected / "SKILL.md").exists()
 
     def test_install_skill_global_flag(self, tmp_path: Path) -> None:
@@ -165,5 +165,5 @@ class TestInstallSkillCLI:
         with patch("pathlib.Path.home", return_value=fake_home):
             result = runner.invoke(cli, ["install-skill", "--global"])
             assert result.exit_code == 0
-            expected = fake_home / ".agents" / "skills" / "google-lens"
+            expected = fake_home / ".agents" / "skills" / "google-lens-pro"
             assert (expected / "SKILL.md").exists()

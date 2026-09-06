@@ -1,12 +1,12 @@
-# Google Lens Scraper Reference Manual
+# Google Lens Pro Reference Manual
 
-This reference manual provides technical specifications, CLI flags, configuration environment variables, response data structures, and troubleshooting protocols for the `google-lens` skill.
+This reference manual provides technical specifications, CLI flags, configuration environment variables, response data structures, and troubleshooting protocols for the `google-lens-pro` skill.
 
 ---
 
 ## 1. CLI Commands & Options
 
-### `google-lens search <QUERY> [OPTIONS]`
+### `lens search <QUERY> [OPTIONS]` (or `google-lens search`)
 Performs visual match searches, OCR extraction, and Knowledge Graph entity lookups.
 `QUERY` can be:
 - A public image URL (e.g., `https://example.com/item.jpg`)
@@ -30,32 +30,32 @@ Performs visual match searches, OCR extraction, and Knowledge Graph entity looku
 | `--cdp-url` | | Connect to existing Chrome instance via CDP (`http://localhost:9222`) | `None` |
 | `--timeout` | | Maximum execution time in seconds | `30.0` |
 
-### `google-lens status`
+### `lens status`
 Inspects the saved authentication session. Displays:
-- Storage state file location (`~/.config/google-lens-scraper/session.json`)
+- Storage state file location (`~/.config/google-lens-pro/session.json`)
 - Authentication state (`Authenticated` vs `Unauthenticated`)
 - Number of loaded session cookies
 - Security token presence (`SOCS`, `SID`, `HSID`, `NID`)
 
-### `google-lens login [OPTIONS]`
+### `lens login [OPTIONS]`
 Launches an interactive Chromium window to log into Google and saves session cookies for permanent headless search capability.
 - `--timeout <int>`: Seconds to wait for Google login (default: `120`).
 - `--env`: Automatically updates `LENS_STORAGE_STATE_JSON` in the local `.env` file.
 - `--export`: Outputs the single-line base64 export string immediately upon clearance.
 
-### `google-lens logout`
-Deletes saved session cookies from `~/.config/google-lens-scraper/session.json`.
+### `lens logout`
+Deletes saved session cookies from `~/.config/google-lens-pro/session.json`.
 
-### `google-lens export-session [OPTIONS]`
+### `lens export-session [OPTIONS]`
 Exports the authenticated session storage state for container, serverless, or CI/CD deployments.
 - `--base64`: Prints single-line base64 string suitable for environment variables.
 - `--env`: Appends or updates `LENS_STORAGE_STATE_JSON` in `.env`.
 
-### `google-lens install-skill [OPTIONS]`
+### `lens install-skill [OPTIONS]`
 Exports and installs this Agent Skill into any local project or global agent directory.
 - `--dest <path>`: Custom destination directory.
-- `--global`, `-g`: Installs to `~/.agents/skills/google-lens/` (user home).
-- `--claude`: Installs to Claude Code directory (`.claude/skills/google-lens/` or `~/.claude/skills/google-lens/`).
+- `--global`, `-g`: Installs to `~/.agents/skills/google-lens-pro/` (user home).
+- `--claude`: Installs to Claude Code directory (`.claude/skills/google-lens-pro/` or `~/.claude/skills/google-lens-pro/`).
 - `--force`, `-f`: Overwrites target directory if it already exists.
 
 ### `google-lens setup-ai [OPTIONS]`

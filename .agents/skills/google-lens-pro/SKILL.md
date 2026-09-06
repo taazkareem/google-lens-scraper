@@ -1,23 +1,23 @@
 ---
-name: google-lens
+name: google-lens-pro
 description: Search Google Lens to find visual matches, identify products and prices, extract text with OCR, and recognize entities (landmarks, plants, artwork). Use when asked to reverse image search, identify items in an image, find where to buy a product, or extract text from photos.
 license: MIT
-compatibility: Requires Python 3.10+ and google-lens-scraper package
+compatibility: Requires Python 3.10+ and google-lens-pro package
 metadata:
   author: taazkareem
-  version: "0.1.4"
+  version: "0.2.0"
 ---
 
-# Google Lens Agent Skill
+# Google Lens Pro Agent Skill
 
 This skill allows an AI agent to execute reverse image searches, extract optical character recognition (OCR) text, detect visual entities, and find shopping matches/prices via Google Lens.
 
 ## Prerequisites & Installation
 
-If `google-lens` is not yet installed in the environment, install the package and download the stealth Chromium browser binary:
+If `lens` is not yet installed in the environment, install the package and download the stealth Chromium browser binary:
 
 ```bash
-pip install google-lens-scraper
+pip install google-lens-pro
 patchright install chromium
 ```
 

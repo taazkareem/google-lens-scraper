@@ -101,7 +101,7 @@ Changelog = "https://github.com/taazkareem/google-lens-pro/blob/main/CHANGELOG.m
 packages = ["src/google_lens_pro"]
 
 [tool.hatch.build.targets.wheel.force-include]
-".agents/skills/google-lens" = "google_lens_pro/data/skill/google-lens"
+".agents/skills/google-lens-pro" = "google_lens_pro/data/skill/google-lens-pro"
 
 # Compile the proprietary Pro engines to native C extensions (no shipped .py source).
 # Opt-in: set HATCH_BUILD_HOOK_ENABLE_MYPYC=1 (CI wheels). Plain installs stay pure Python.

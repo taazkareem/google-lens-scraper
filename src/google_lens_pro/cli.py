@@ -1061,24 +1061,27 @@ def get_skill_source_path() -> Path:
     """Locates the bundled Google Lens Agent Skill source directory."""
     # 1. Try importlib.resources
     for pkg in ("google_lens_pro",):
-        try:
-            ref = pkg_resources.files(pkg).joinpath("data", "skill", "google-lens")
-            p = Path(str(ref))
-            if p.exists() and (p / "SKILL.md").exists():
-                return p
-        except Exception:
-            pass
+        for sub in ("google-lens-pro", "google-lens"):
+            try:
+                ref = pkg_resources.files(pkg).joinpath("data", "skill", sub)
+                p = Path(str(ref))
+                if p.exists() and (p / "SKILL.md").exists():
+                    return p
+            except Exception:
+                pass
 
     # 2. Local package directory relative to this file
     pkg_dir = Path(__file__).resolve().parent
-    local_skill = pkg_dir / "data" / "skill" / "google-lens"
-    if local_skill.exists() and (local_skill / "SKILL.md").exists():
-        return local_skill
+    for sub in ("google-lens-pro", "google-lens"):
+        local_skill = pkg_dir / "data" / "skill" / sub
+        if local_skill.exists() and (local_skill / "SKILL.md").exists():
+            return local_skill
 
-    # 3. Development repository root (.agents/skills/google-lens)
-    repo_skill = pkg_dir.parent.parent / ".agents" / "skills" / "google-lens"
-    if repo_skill.exists() and (repo_skill / "SKILL.md").exists():
-        return repo_skill
+    # 3. Development repository root (.agents/skills/google-lens-pro)
+    for sub in ("google-lens-pro", "google-lens"):
+        repo_skill = pkg_dir.parent.parent / ".agents" / "skills" / sub
+        if repo_skill.exists() and (repo_skill / "SKILL.md").exists():
+            return repo_skill
 
     raise FileNotFoundError("Google Lens Agent Skill data files could not be located.")
 
@@ -1114,20 +1117,21 @@ def install_skill_cmd(
     claude: bool,
     force: bool,
 ) -> None:
-    """Install the Google Lens Agent Skill for AI agents (VS Code, Claude Code, Cursor, Codex)."""
+    """Install the Google Lens Pro Agent Skill for AI agents (VS Code, Claude Code, Cursor, Codex)."""
     try:
         source_dir = get_skill_source_path()
     except Exception as e:
         console.print(f"[bold red]Error locating skill template:[/bold red] {e}")
         sys.exit(1)
 
+    skill_name = "google-lens-pro"
     if dest:
         dest_path = Path(dest).resolve()
-        target_dir = dest_path / "google-lens" if dest_path.name != "google-lens" else dest_path
+        target_dir = dest_path / skill_name if dest_path.name != skill_name else dest_path
     else:
         base_folder = ".claude" if claude else ".agents"
         parent_dir = Path.home() if is_global else Path.cwd()
-        target_dir = parent_dir / base_folder / "skills" / "google-lens"
+        target_dir = parent_dir / base_folder / "skills" / skill_name
 
     if target_dir.exists():
         if not force:
@@ -1149,7 +1153,7 @@ def install_skill_cmd(
                 script_file.chmod(script_file.stat().st_mode | 0o111)
 
     console.print(
-        f"[bold green]✓ Successfully installed google-lens Agent Skill to:[/bold green] {target_dir}"
+        f"[bold green]✓ Successfully installed google-lens-pro Agent Skill to:[/bold green] {target_dir}"
     )
     console.print(
         "[dim]Compatible with VS Code Copilot, Claude Code, Cursor, Codex, Gemini CLI, etc.[/dim]\n"

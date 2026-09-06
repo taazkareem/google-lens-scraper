@@ -11,7 +11,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/taazkareem/google-lens-pro?style=flat&color=yellow)](https://github.com/taazkareem/google-lens-pro/stargazers)
 [![License: Proprietary / Dual](https://img.shields.io/badge/License-Dual%20MIT%20%2F%20Pro-blue.svg)](LICENSE)
 [![Polar Pro](https://img.shields.io/badge/Polar.sh-Pro%20Available-0069ff.svg)](https://buy.polar.sh/polar_cl_LvZYm1TaDHiQof4M4DyiLjMXVnV8y7DtJkcCK21Xpc8)
-[![Agent Skill: google-lens](https://img.shields.io/badge/Agent%20Skill-google--lens-8A2BE2.svg)](https://agentskills.io)
+[![Agent Skill: google-lens-pro](https://img.shields.io/badge/Agent%20Skill-google--lens--pro-8A2BE2.svg)](https://agentskills.io)
 
 **Google Lens Pro** is a high-performance Python package and CLI for reverse-engineered **Google Lens visual search**, **Google Shopping scraping**, **reverse image lookup**, and **multimodal commercial intelligence** using **Patchright** stealth browser automation and native **Chromium Protobuf** protocols. Fast, developer-friendly, and self-hosted alternative to expensive cloud proxy APIs like SerpApi and TinEye. No API keys required. Optional Pro Tier available with complete features.
 
@@ -32,7 +32,7 @@
   - [Visual Search (Sync)](#1-synchronous-search-visual-matches--ocr)
   - [Fast-Path OCR (Zero Browser, Sub-Second)](#2-fast-path-ocr--object-detection-only-sub-second-no-browser)
   - [Asynchronous Search (AsyncIO)](#3-asynchronous-search)
-- [Agent Skill Integration](#agent-skill-google-lens)
+- [Agent Skill Integration](#agent-skill-google-lens-pro)
 - [Authentication & Headless Deployments](#authentication-one-time-setup)
 - [CLI Reference & Commands](#cli-usage)
 - [Configuration Options](#configuration-options)
@@ -186,7 +186,7 @@ Unlock automated **E-Commerce & Resale Arbitrage Intelligence** (`--enrich`), **
 
 ---
 
-## Agent Skill (`google-lens`)
+## Agent Skill (`google-lens-pro`)
 
 `google-lens-pro` includes a pre-packaged, specification-compliant [Agent Skill](https://agentskills.io/home) that gives AI coding agents (VS Code GitHub Copilot, Claude Code, Cursor, Codex, Gemini CLI, Hermes, etc.) native visual search and OCR tools.
 
@@ -198,11 +198,11 @@ To install the skill into your current workspace:
 lens install-skill
 ```
 
-This installs the skill to `.agents/skills/google-lens/`.
+This installs the skill to `.agents/skills/google-lens-pro/`.
 
 #### Additional Installation Options:
-- **Global User Install**: `lens install-skill --global` (installs to `~/.agents/skills/google-lens/`)
-- **Claude Code**: `lens install-skill --claude` (installs to `.claude/skills/google-lens/`, or combine with `--global`)
+- **Global User Install**: `lens install-skill --global` (installs to `~/.agents/skills/google-lens-pro/`)
+- **Claude Code**: `lens install-skill --claude` (installs to `.claude/skills/google-lens-pro/`, or combine with `--global`)
 - **Custom Directory**: `lens install-skill --dest ./my-skills/`
 - **Force Overwrite**: `lens install-skill --force`
 
